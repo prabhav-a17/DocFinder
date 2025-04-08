@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { User } from '../types';
 
-const API_URL = 'http://localhost:8000/api/auth';
+const API_URL = 'http://localhost:8001/api/auth';
 
 export interface LoginCredentials {
     username: string;
