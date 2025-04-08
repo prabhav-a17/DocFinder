@@ -22,7 +22,7 @@ const Login: React.FC = () => {
         try {
             const response = await authService.login(credentials);
             dispatch(loginSuccess(response));
-            navigate('/');
+            navigate('/dashboard');
         } catch (err: any) {
             const errorMessage = err.response?.data?.error || 'Login failed';
             setError(errorMessage);
