@@ -5,6 +5,7 @@ import { ThemeProvider, createTheme } from '@mui/material';
 import { store } from './store';
 import Navigation from './components/Navigation';
 import HomePage from './components/HomePage';
+import Dashboard from './components/Dashboard';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 import ForgotPassword from './components/auth/ForgotPassword';
@@ -47,6 +48,11 @@ function App() {
                         <Route path="/forgot-password" element={<ForgotPassword />} />
                         <Route path="/reset-password/:token" element={<ResetPassword />} />
                         <Route path="/admin/*" element={<AdminRedirect />} />
+                        <Route path="/dashboard" element={
+                            <PrivateRoute>
+                                <Dashboard />
+                            </PrivateRoute>
+                        } />
                     </Routes>
                 </Router>
             </ThemeProvider>
