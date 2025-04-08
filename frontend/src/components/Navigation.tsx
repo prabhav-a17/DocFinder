@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store';
 import { logout } from '../store/slices/authSlice';
+import ChatIcon from '@mui/icons-material/Chat';
 
 const Navigation: React.FC = () => {
     const navigate = useNavigate();
@@ -27,6 +28,14 @@ const Navigation: React.FC = () => {
                     DocFinder
                 </Typography>
                 <Box>
+                    <Button
+                        color="inherit"
+                        onClick={() => navigate('/chatbot')}
+                        sx={{ mr: 2 }}
+                        startIcon={<ChatIcon />}
+                    >
+                        Chatbot
+                    </Button>
                     {isAuthenticated ? (
                         <>
                             {user?.is_admin && (

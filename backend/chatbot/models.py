@@ -1,5 +1,6 @@
 from django.db import models
 from users.models import User
+from django.utils import timezone
 
 class Conversation(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -20,3 +21,21 @@ class Message(models.Model):
 
     def __str__(self):
         return f"Message {self.id} - {'User' if self.is_user else 'Bot'}"
+
+class ChatMessage(models.Model):
+    ROLE_CHOICES = [
+        ('user', 'User'),
+        ('assistant', 'Assistant'),
+        ('system', 'System'),
+    ]
+
+    role = models.CharField(max_length=10, choices=ROLE_CHOICES)
+    content = models.TextField()
+    timestamp = models.DateTimeField(default=timezone.now)
+    conversation_id = models.CharField(max_length=50, blank=True, null=True)
+
+    class Meta:
+        ordering = ['timestamp']
+
+    def __str__(self):
+        return f"{self.role}: {self.content[:50]}..."
