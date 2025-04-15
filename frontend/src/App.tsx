@@ -10,6 +10,7 @@ import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 import ForgotPassword from './components/auth/ForgotPassword';
 import ResetPassword from './components/auth/ResetPassword';
+import Chatbot from './components/Chatbot';
 import { useSelector } from 'react-redux';
 import { RootState } from './store';
 
@@ -53,6 +54,7 @@ function App() {
                                 <Dashboard />
                             </PrivateRoute>
                         } />
+                        <Route path="/chatbot" element={<Chatbot />} />
                     </Routes>
                 </Router>
             </ThemeProvider>
