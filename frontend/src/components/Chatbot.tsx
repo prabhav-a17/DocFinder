@@ -1,31 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Box, Typography, Paper, TextField, Button, List, ListItem, ListItemText, IconButton, Divider, ListItemButton } from '@mui/material';
+import { Box, Typography, Paper, TextField, Button, List, ListItem, ListItemText } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
-import PushPinIcon from '@mui/icons-material/PushPin';
-import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
-import HistoryIcon from '@mui/icons-material/History';
-import DeleteIcon from '@mui/icons-material/Delete';
 
 interface Message {
-    id?: number;
     text: string;
     isUser: boolean;
-    is_pinned?: boolean;
-    conversation_id?: string | null;
-    timestamp?: string;
-    isHistory?: boolean;
-}
-
-interface Conversation {
-    conversation_id: string;
-    timestamp: string;
-    messages: {
-        id: number;
-        role: string;
-        content: string;
-        timestamp: string;
-        is_pinned: boolean;
-    }[];
 }
 
 const Chatbot: React.FC = () => {
@@ -235,14 +214,6 @@ const Chatbot: React.FC = () => {
 
             const data = await response.json();
             
-            // Update user message with server-assigned ID
-            const updatedUserMessage = {
-                ...userMessage,
-                id: data.user_message_id,
-                conversation_id: data.conversation_id,
-                timestamp: new Date().toISOString()
-            };
-            
             const botMessage: Message = {
                 id: data.message_id,
                 text: data.response,
@@ -329,6 +300,36 @@ const Chatbot: React.FC = () => {
         }
     };
 
+    const handleImageUpload = async (file: File) => {
+        setIsLoading(true);
+
+        // Show user's image in chat immediately
+        const userImageMessage: Message = {
+            isUser: true,
+            imageUrl: URL.createObjectURL(file),
+            text: ''
+        };
+        setMessages(prev => [...prev, userImageMessage]);
+
+        const data = await uploadImageToBot(file);
+
+        if (data?.success) {
+            const botResponse: Message = {
+                isUser: false,
+                text: data.response,
+                imageUrl: data.image_url
+            };
+            setMessages(prev => [...prev, botResponse]);
+        } else {
+            setMessages(prev => [...prev, {
+                isUser: false,
+                text: 'Sorry, something went wrong with the image.'
+            }]);
+        }
+
+        setIsLoading(false);
+    };
+
     const handleKeyPress = (event: React.KeyboardEvent) => {
         if (event.key === 'Enter' && !event.shiftKey) {
             event.preventDefault();
@@ -364,326 +365,66 @@ const Chatbot: React.FC = () => {
     };
 
     return (
-        <Box sx={{ display: 'flex', gap: 2, height: 'calc(100vh - 150px)' }}>
-            {/* Chat History Sidebar */}
-            <Paper 
-                elevation={3} 
-                sx={{ 
-                    width: 300,
-                    p: 2,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    height: '100%',
-                    overflow: 'hidden',
-                    bgcolor: 'grey.100',
-                    borderRadius: 2
-                }}
-            >
-                <Box sx={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center', 
-                    mb: 2,
-                    pb: 2,
-                    borderBottom: '1px solid',
-                    borderColor: 'divider'
-                }}>
-                    <Typography variant="h6" sx={{ fontWeight: 500 }}>Chat History</Typography>
-                    <Box>
-                        <IconButton 
-                            onClick={handleNewChatClick} 
-                            color="primary" 
-                            title="New Chat"
+        <Paper elevation={3} sx={{ p: 3, height: '70vh', display: 'flex', flexDirection: 'column' }}>
+            <Typography variant="h5" gutterBottom>
+                DocFinder Chat
+            </Typography>
+            <Box sx={{ 
+                flexGrow: 1, 
+                overflow: 'auto',
+                bgcolor: 'grey.50',
+                borderRadius: 1,
+                mb: 2,
+                p: 2
+            }}>
+                <List>
+                    {messages.map((message, index) => (
+                        <ListItem
+                            key={index}
                             sx={{
-                                mr: 1,
-                                '&:hover': {
-                                    backgroundColor: 'primary.light',
-                                }
+                                justifyContent: message.isUser ? 'flex-end' : 'flex-start',
+                                mb: 1
                             }}
                         >
-                            <HistoryIcon />
-                        </IconButton>
-                        <IconButton 
-                            onClick={() => handleDeleteConversation()} 
-                            color="error" 
-                            title="Delete All History"
-                            sx={{
-                                '&:hover': {
-                                    backgroundColor: 'error.light',
-                                }
-                            }}
-                        >
-                            <DeleteIcon />
-                        </IconButton>
-                    </Box>
-                </Box>
-                <Box sx={{ overflow: 'auto', flexGrow: 1 }}>
-                    <List>
-                        {chatHistory.map((conversation) => {
-                            // Get the first user message for the preview
-                            const previewMessage = conversation.messages.find(msg => msg.role === 'user') || conversation.messages[0];
-                            const messageDate = new Date(conversation.timestamp);
-                            const today = new Date();
-                            const yesterday = new Date(today);
-                            yesterday.setDate(yesterday.getDate() - 1);
-                            
-                            let dateDisplay;
-                            if (messageDate.toDateString() === today.toDateString()) {
-                                dateDisplay = 'Today';
-                            } else if (messageDate.toDateString() === yesterday.toDateString()) {
-                                dateDisplay = 'Yesterday';
-                            } else {
-                                dateDisplay = messageDate.toLocaleDateString();
-                            }
-
-                            return (
-                                <ListItem 
-                                    key={conversation.conversation_id}
-                                    disablePadding
-                                    sx={{ 
-                                        mb: 0.5,
-                                        borderRadius: 1,
-                                        overflow: 'hidden',
-                                    }}
-                                >
-                                    <ListItemButton 
-                                        selected={currentConversationId === conversation.conversation_id}
-                                        onClick={() => handleHistoryItemClick(conversation)}
-                                        sx={{
-                                            py: 2,
-                                            px: 2,
-                                            '&.Mui-selected': {
-                                                backgroundColor: 'primary.light',
-                                                color: 'white',
-                                                '&:hover': {
-                                                    backgroundColor: 'primary.main',
-                                                }
-                                            },
-                                            '&:hover': {
-                                                backgroundColor: 'action.hover',
-                                            },
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            alignItems: 'flex-start',
-                                        }}
-                                    >
-                                        <Typography
-                                            variant="body2"
-                                            sx={{
-                                                color: currentConversationId === conversation.conversation_id ? 'inherit' : 'text.secondary',
-                                                fontSize: '0.75rem',
-                                                mb: 0.5,
-                                                alignSelf: 'flex-start'
-                                            }}
-                                        >
-                                            {dateDisplay}
-                                        </Typography>
-                                        <Typography
-                                            sx={{
-                                                fontSize: '0.875rem',
-                                                color: currentConversationId === conversation.conversation_id ? 'inherit' : 'text.primary',
-                                                overflow: 'hidden',
-                                                textOverflow: 'ellipsis',
-                                                display: '-webkit-box',
-                                                WebkitLineClamp: 2,
-                                                WebkitBoxOrient: 'vertical',
-                                                width: '100%',
-                                            }}
-                                        >
-                                            {previewMessage.content.substring(0, 50)}
-                                            {previewMessage.content.length > 50 ? '...' : ''}
-                                        </Typography>
-                                        <Box
-                                            sx={{
-                                                position: 'absolute',
-                                                right: 8,
-                                                top: '50%',
-                                                transform: 'translateY(-50%)',
-                                                opacity: 0,
-                                                transition: 'opacity 0.2s',
-                                                '.MuiListItemButton-root:hover &': {
-                                                    opacity: 1,
-                                                },
-                                            }}
-                                        >
-                                            <IconButton 
-                                                size="small"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleDeleteConversation(conversation.conversation_id);
-                                                }}
-                                                sx={{
-                                                    color: currentConversationId === conversation.conversation_id ? 'white' : 'error.main',
-                                                    '&:hover': {
-                                                        backgroundColor: currentConversationId === conversation.conversation_id ? 'error.dark' : 'error.light',
-                                                    },
-                                                }}
-                                            >
-                                                <DeleteIcon fontSize="small" />
-                                            </IconButton>
-                                        </Box>
-                                    </ListItemButton>
-                                </ListItem>
-                            );
-                        })}
-                    </List>
-                </Box>
-            </Paper>
-
-            {/* Main Chat Area */}
-            <Paper elevation={3} sx={{ p: 3, flex: 1, display: 'flex', flexDirection: 'column' }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                    <Typography variant="h5">
-                        DocFinder Chat
-                    </Typography>
-                    <Button
-                        variant="contained"
-                        startIcon={<HistoryIcon />}
-                        onClick={handleNewChatClick}
-                        size="small"
-                    >
-                        New Chat
-                    </Button>
-                </Box>
-                <Box sx={{ 
-                    flexGrow: 1, 
-                    overflow: 'auto',
-                    bgcolor: 'grey.50',
-                    borderRadius: 1,
-                    mb: 2,
-                    p: 2
-                }}>
-                    <List>
-                        {messages.map((message, index) => (
-                            <ListItem
-                                key={index}
+                            <Paper
+                                elevation={1}
                                 sx={{
-                                    justifyContent: message.isUser ? 'flex-end' : 'flex-start',
-                                    mb: 1
+                                    p: 2,
+                                    maxWidth: '70%',
+                                    bgcolor: message.isUser ? 'primary.main' : 'background.paper',
+                                    color: message.isUser ? 'white' : 'text.primary'
                                 }}
                             >
-                                <Paper
-                                    elevation={1}
-                                    sx={{
-                                        p: 2,
-                                        maxWidth: '70%',
-                                        bgcolor: message.isUser ? 'primary.main' : 'background.paper',
-                                        color: message.isUser ? 'white' : 'text.primary',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 1
-                                    }}
-                                >
-                                    <ListItemText 
-                                        primary={message.text}
-                                        secondary={message.timestamp ? new Date(message.timestamp).toLocaleString() : undefined}
-                                        sx={{
-                                            '& .MuiListItemText-secondary': {
-                                                color: message.isUser ? 'rgba(255,255,255,0.7)' : 'inherit'
-                                            }
-                                        }}
-                                    />
-                                    {message.id && (
-                                        <IconButton 
-                                            size="small" 
-                                            onClick={() => handleTogglePin(message.id!)}
-                                            sx={{ color: message.isUser ? 'white' : 'inherit' }}
-                                        >
-                                            {message.is_pinned ? <PushPinIcon /> : <PushPinOutlinedIcon />}
-                                        </IconButton>
-                                    )}
-                                </Paper>
-                            </ListItem>
-                        ))}
-                        <div ref={messagesEndRef} />
-                    </List>
-                </Box>
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                    <TextField
-                        fullWidth
-                        multiline
-                        maxRows={4}
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyPress={handleKeyPress}
-                        placeholder="Type your message..."
-                        disabled={isLoading}
-                        sx={{ flexGrow: 1 }}
-                    />
-                    <Button
-                        variant="contained"
-                        endIcon={<SendIcon />}
-                        onClick={handleSend}
-                        disabled={isLoading || !input.trim()}
-                    >
-                        Send
-                    </Button>
-                </Box>
-            </Paper>
-            
-            {/* Pinned Messages Section */}
-            <Paper 
-                elevation={3} 
-                sx={{ 
-                    width: 300,
-                    p: 2,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    height: '100%',
-                    overflow: 'hidden'
-                }}
-            >
-                <Typography variant="h6" gutterBottom>
-                    Pinned Messages
-                </Typography>
-                <Box sx={{ overflow: 'auto', flexGrow: 1 }}>
-                    <List>
-                        {pinnedMessages.map((message) => (
-                            <ListItem
-                                key={message.id}
-                                sx={{ 
-                                    display: 'flex', 
-                                    flexDirection: 'column', 
-                                    alignItems: 'flex-start',
-                                    mb: 1
-                                }}
-                            >
-                                <Paper
-                                    elevation={1}
-                                    sx={{
-                                        p: 2,
-                                        width: '100%',
-                                        bgcolor: message.isUser ? 'primary.main' : 'background.paper',
-                                        color: message.isUser ? 'white' : 'text.primary',
-                                    }}
-                                >
-                                    <ListItemText 
-                                        primary={message.text}
-                                        secondary={message.timestamp ? new Date(message.timestamp).toLocaleString() : undefined}
-                                        sx={{
-                                            '& .MuiListItemText-secondary': {
-                                                color: message.isUser ? 'rgba(255,255,255,0.7)' : 'inherit'
-                                            }
-                                        }}
-                                    />
-                                    <IconButton 
-                                        size="small" 
-                                        onClick={() => handleTogglePin(message.id!)}
-                                        sx={{ 
-                                            color: message.isUser ? 'white' : 'inherit',
-                                            mt: 1
-                                        }}
-                                    >
-                                        <PushPinIcon />
-                                    </IconButton>
-                                </Paper>
-                            </ListItem>
-                        ))}
-                    </List>
-                </Box>
-            </Paper>
-        </Box>
+                                <ListItemText primary={message.text} />
+                            </Paper>
+                        </ListItem>
+                    ))}
+                    <div ref={messagesEndRef} />
+                </List>
+            </Box>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+                <TextField
+                    fullWidth
+                    multiline
+                    maxRows={4}
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder="Type your message..."
+                    disabled={isLoading}
+                    sx={{ flexGrow: 1 }}
+                />
+                <Button
+                    variant="contained"
+                    endIcon={<SendIcon />}
+                    onClick={handleSend}
+                    disabled={isLoading || !input.trim()}
+                >
+                    Send
+                </Button>
+            </Box>
+        </Paper>
     );
 };
 
-export default Chatbot; 
+export default Chatbot;

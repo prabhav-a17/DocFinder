@@ -8,4 +8,5 @@ urlpatterns = [
     path('chat/history/', views.get_chat_history, name='get_chat_history'),
     path('chat/history/delete/', views.delete_chat_history, name='delete_all_chat_history'),
     path('chat/history/delete/<str:conversation_id>/', views.delete_chat_history, name='delete_conversation'),
+    path('upload-image/', views.upload_image, name='upload_image'),
 ] 
