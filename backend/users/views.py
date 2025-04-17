@@ -8,14 +8,16 @@ from django.conf import settings
 from django.utils.crypto import get_random_string
 from django.utils import timezone
 from datetime import timedelta
-from .models import User
+from .models import User, Appointment
 from .serializers import (
     UserRegistrationSerializer,
     UserLoginSerializer,
     PasswordResetRequestSerializer,
     PasswordResetSerializer,
-    UserSerializer
+    UserSerializer,
+    AppointmentSerializer
 )
+from rest_framework.decorators import api_view, permission_classes
 
 class UserRegistrationView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -74,11 +76,43 @@ class PasswordResetRequestView(APIView):
             user.save()
             
             reset_link = f"{settings.FRONTEND_URL}/reset-password/{token}"
+            subject = 'Password Reset Request - DocFinder'
+            html_content = f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #333;">Hello {user.username},</h2>
+                <p>We received a request to reset your password for your DocFinder account.</p>
+                <p>Click the button below to reset your password:</p>
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{reset_link}" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">Reset Password</a>
+                </div>
+                <p style="color: #666;">This link will expire in 1 hour.</p>
+                <p style="color: #666;">If you didn't request this password reset, you can safely ignore this email.</p>
+                <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+                <p style="color: #999; font-size: 12px;">Best regards,<br>The DocFinder Team</p>
+            </div>
+            """
+            text_content = f"""
+            Hello {user.username},
+
+            We received a request to reset your password for your DocFinder account.
+            Click the link below to reset your password:
+
+            {reset_link}
+
+            This link will expire in 1 hour.
+
+            If you didn't request this password reset, you can safely ignore this email.
+
+            Best regards,
+            The DocFinder Team
+            """
+            
             send_mail(
-                'Password Reset Request',
-                f'Click the following link to reset your password: {reset_link}',
-                settings.EMAIL_HOST_USER,
-                [email],
+                subject=subject,
+                message=text_content,
+                html_message=html_content,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[email],
                 fail_silently=False,
             )
             return Response({'message': 'Password reset email sent'})
@@ -119,4 +153,80 @@ class UserListView(generics.ListAPIView):
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [permissions.IsAdminUser] 
+    permission_classes = [permissions.IsAdminUser]
+
+class AppointmentListCreateView(generics.ListCreateAPIView):
+    serializer_class = AppointmentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Appointment.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        appointment = serializer.save(user=self.request.user)
+        # Schedule notification email
+        self.schedule_notification_email(appointment)
+
+    def schedule_notification_email(self, appointment):
+        notification_time = appointment.appointment_time - timedelta(hours=1)
+        if notification_time > timezone.now():
+            subject = 'Upcoming Appointment Reminder'
+            html_content = f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #333;">Appointment Reminder</h2>
+                <p>Hello {appointment.user.username},</p>
+                <p>This is a reminder that you have an appointment in 1 hour:</p>
+                <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px;">
+                    <p><strong>Doctor:</strong> {appointment.doctor_name}</p>
+                    <p><strong>Time:</strong> {appointment.appointment_time.strftime('%B %d, %Y at %I:%M %p')}</p>
+                    <p><strong>Reason:</strong> {appointment.reason}</p>
+                </div>
+                <p style="color: #666;">Please arrive a few minutes early for your appointment.</p>
+                <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+                <p style="color: #999; font-size: 12px;">Best regards,<br>The DocFinder Team</p>
+            </div>
+            """
+            text_content = f"""
+            Appointment Reminder
+
+            Hello {appointment.user.username},
+
+            This is a reminder that you have an appointment in 1 hour:
+
+            Doctor: {appointment.doctor_name}
+            Time: {appointment.appointment_time.strftime('%B %d, %Y at %I:%M %p')}
+            Reason: {appointment.reason}
+
+            Please arrive a few minutes early for your appointment.
+
+            Best regards,
+            The DocFinder Team
+            """
+            
+            send_mail(
+                subject=subject,
+                message=text_content,
+                html_message=html_content,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[appointment.user.email],
+                fail_silently=False,
+            )
+
+class AppointmentDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = AppointmentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Appointment.objects.filter(user=self.request.user)
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def upcoming_appointments(request):
+    now = timezone.now()
+    appointments = Appointment.objects.filter(
+        user=request.user,
+        appointment_time__gt=now
+    ).order_by('appointment_time')[:5]
+    
+    serializer = AppointmentSerializer(appointments, many=True)
+    return Response(serializer.data) 

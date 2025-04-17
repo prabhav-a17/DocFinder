@@ -5,7 +5,10 @@ from .views import (
     PasswordResetRequestView,
     PasswordResetView,
     UserListView,
-    UserDetailView
+    UserDetailView,
+    AppointmentListCreateView,
+    AppointmentDetailView,
+    upcoming_appointments
 )
 
 urlpatterns = [
@@ -15,4 +18,7 @@ urlpatterns = [
     path('password-reset/', PasswordResetView.as_view(), name='password-reset'),
     path('users/', UserListView.as_view(), name='user-list'),
     path('users/<int:pk>/', UserDetailView.as_view(), name='user-detail'),
+    path('appointments/', AppointmentListCreateView.as_view(), name='appointment-list-create'),
+    path('appointments/<int:pk>/', AppointmentDetailView.as_view(), name='appointment-detail'),
+    path('upcoming-appointments/', upcoming_appointments, name='upcoming-appointments'),
 ] 

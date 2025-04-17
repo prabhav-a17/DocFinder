@@ -18,3 +18,19 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.username
+
+class Appointment(models.Model):
+    user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='appointments')
+    doctor_name = models.CharField(max_length=255)
+    doctor_place_id = models.CharField(max_length=255, null=True, blank=True)  # Google Places ID
+    appointment_time = models.DateTimeField()
+    reason = models.TextField()
+    notification_sent = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['appointment_time']
+
+    def __str__(self):
+        return f"{self.user.username}'s appointment with {self.doctor_name} at {self.appointment_time}"
