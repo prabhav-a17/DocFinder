@@ -1,11 +1,13 @@
 import React from 'react';
-import { AppBar, Toolbar, Typography, Button, Box } from '@mui/material';
+import { AppBar, Toolbar, Typography, Button, Box, Avatar } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store';
 import { logout } from '../store/slices/authSlice';
-import ChatIcon from '@mui/icons-material/Chat';
+import DashboardIcon from '@mui/icons-material/Dashboard';
 import SearchIcon from '@mui/icons-material/Search';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import { toast } from 'react-toastify';
 
 const Navigation: React.FC = () => {
     const navigate = useNavigate();
@@ -15,6 +17,15 @@ const Navigation: React.FC = () => {
     const handleLogout = () => {
         dispatch(logout());
         navigate('/login');
+    };
+
+    const handleProtectedRoute = (path: string) => {
+        if (!isAuthenticated) {
+            toast.info('Please log in to access this feature');
+            navigate('/login');
+            return;
+        }
+        navigate(path);
     };
 
     return (
@@ -28,22 +39,27 @@ const Navigation: React.FC = () => {
                 >
                     DocFinder
                 </Typography>
-                <Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <Button
                         color="inherit"
-                        onClick={() => navigate('/chatbot')}
-                        sx={{ mr: 2 }}
-                        startIcon={<ChatIcon />}
+                        onClick={() => handleProtectedRoute('/dashboard')}
+                        startIcon={<DashboardIcon />}
                     >
-                        Chatbot
+                        Dashboard
                     </Button>
                     <Button
                         color="inherit"
-                        onClick={() => navigate('/find-doctor/general')}
-                        sx={{ mr: 2 }}
+                        onClick={() => handleProtectedRoute('/find-doctor')}
                         startIcon={<SearchIcon />}
                     >
                         Find Doctor
+                    </Button>
+                    <Button
+                        color="inherit"
+                        onClick={() => handleProtectedRoute('/appointments')}
+                        startIcon={<CalendarMonthIcon />}
+                    >
+                        My Appointments
                     </Button>
                     {isAuthenticated ? (
                         <>
@@ -51,21 +67,27 @@ const Navigation: React.FC = () => {
                                 <Button
                                     color="inherit"
                                     onClick={() => navigate('/admin/users')}
-                                    sx={{ mr: 2 }}
                                 >
                                     Admin
                                 </Button>
                             )}
-                            <Button color="inherit" onClick={handleLogout}>
-                                Logout
-                            </Button>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Avatar sx={{ width: 32, height: 32, bgcolor: 'secondary.main' }}>
+                                    {user?.username?.[0]?.toUpperCase()}
+                                </Avatar>
+                                <Typography variant="body1">
+                                    {user?.username}
+                                </Typography>
+                                <Button color="inherit" onClick={handleLogout}>
+                                    Logout
+                                </Button>
+                            </Box>
                         </>
                     ) : (
                         <>
                             <Button
                                 color="inherit"
                                 onClick={() => navigate('/login')}
-                                sx={{ mr: 2 }}
                             >
                                 Login
                             </Button>

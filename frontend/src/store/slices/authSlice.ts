@@ -3,8 +3,8 @@ import { User, AuthState } from '../../types';
 
 const initialState: AuthState = {
     user: null,
-    token: null,
-    isAuthenticated: false,
+    token: localStorage.getItem('token'),
+    isAuthenticated: !!localStorage.getItem('token'),
     loading: false,
     error: null,
 };
@@ -22,6 +22,7 @@ const authSlice = createSlice({
             state.isAuthenticated = true;
             state.user = action.payload.user;
             state.token = action.payload.token;
+            localStorage.setItem('token', action.payload.token);
         },
         loginFailure: (state, action: PayloadAction<string>) => {
             state.loading = false;
@@ -32,6 +33,7 @@ const authSlice = createSlice({
             state.token = null;
             state.isAuthenticated = false;
             state.error = null;
+            localStorage.removeItem('token');
         },
         clearError: (state) => {
             state.error = null;

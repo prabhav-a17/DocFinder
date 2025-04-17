@@ -12,8 +12,9 @@ import ForgotPassword from './components/auth/ForgotPassword';
 import ResetPassword from './components/auth/ResetPassword';
 import Chatbot from './components/Chatbot';
 import FindDoctor from './components/clinic/FindDoctor';
-import { useSelector } from 'react-redux';
-import { RootState } from './store';
+import Appointments from './pages/Appointments';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const theme = createTheme({
     palette: {
@@ -27,14 +28,49 @@ const theme = createTheme({
 });
 
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const { isAuthenticated } = useSelector((state: RootState) => state.auth);
+    const { isAuthenticated } = store.getState().auth;
     return isAuthenticated ? <>{children}</> : <Navigate to="/login" />;
 };
 
-// Redirect to Django admin
-const AdminRedirect = () => {
-    window.location.href = '/admin';
-    return null;
+const AppRoutes = () => {
+    return (
+        <>
+            <Navigation />
+            <ToastContainer />
+            <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password/:token" element={<ResetPassword />} />
+                <Route path="/admin/*" element={<AdminRedirect />} />
+                <Route path="/dashboard" element={
+                    <PrivateRoute>
+                        <Dashboard />
+                    </PrivateRoute>
+                } />
+                <Route path="/chatbot" element={
+                    <PrivateRoute>
+                        <Chatbot />
+                    </PrivateRoute>
+                } />
+                <Route path="/find-doctor" element={<FindDoctor />} />
+                <Route path="/appointments" element={
+                    <PrivateRoute>
+                        <Appointments />
+                    </PrivateRoute>
+                } />
+            </Routes>
+        </>
+    );
+};
+
+const AdminRedirect: React.FC = () => {
+    const { isAuthenticated, user } = store.getState().auth;
+    if (!isAuthenticated || !user?.is_admin) {
+        return <Navigate to="/" />;
+    }
+    return <Navigate to="/admin/users" />;
 };
 
 function App() {
@@ -42,22 +78,7 @@ function App() {
         <Provider store={store}>
             <ThemeProvider theme={theme}>
                 <Router>
-                    <Navigation />
-                    <Routes>
-                        <Route path="/" element={<HomePage />} />
-                        <Route path="/login" element={<Login />} />
-                        <Route path="/register" element={<Register />} />
-                        <Route path="/forgot-password" element={<ForgotPassword />} />
-                        <Route path="/reset-password/:token" element={<ResetPassword />} />
-                        <Route path="/admin/*" element={<AdminRedirect />} />
-                        <Route path="/dashboard" element={
-                            <PrivateRoute>
-                                <Dashboard />
-                            </PrivateRoute>
-                        } />
-                        <Route path="/chatbot" element={<Chatbot />} />
-                        <Route path="/find-doctor/:specialist" element={<FindDoctor />} />
-                    </Routes>
+                    <AppRoutes />
                 </Router>
             </ThemeProvider>
         </Provider>

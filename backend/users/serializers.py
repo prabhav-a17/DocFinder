@@ -2,6 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
+from .models import User, Appointment
 
 User = get_user_model()
 
@@ -47,4 +48,10 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('id', 'username', 'email', 'phone_number', 'is_admin', 'date_joined')
-        read_only_fields = ('id', 'date_joined') 
+        read_only_fields = ('id', 'date_joined')
+
+class AppointmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Appointment
+        fields = ['id', 'doctor_name', 'doctor_place_id', 'appointment_time', 'reason', 'created_at']
+        read_only_fields = ['id', 'created_at'] 

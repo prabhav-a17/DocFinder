@@ -32,9 +32,7 @@ const authService = {
             const response = await axios.post(`${API_URL}/register/`, data, {
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': document.cookie.replace(/(?:(?:^|.*;\s*)csrftoken\s*\=\s*([^;]*).*$)|^.*$/, "$1"),
-                },
-                withCredentials: true
+                }
             });
             return response.data;
         } catch (error: any) {
@@ -44,8 +42,14 @@ const authService = {
     },
 
     login: async (credentials: LoginCredentials) => {
-        const response = await axios.post(`${API_URL}/login/`, credentials);
-        return response.data;
+        try {
+            const response = await axios.post(`${API_URL}/login/`, credentials);
+            const { access, refresh, user } = response.data;
+            return { token: access, refreshToken: refresh, user };
+        } catch (error: any) {
+            console.error('Login API error:', error.response?.data || error.message);
+            throw error;
+        }
     },
 
     requestPasswordReset: async (data: PasswordResetRequest) => {

@@ -8,14 +8,16 @@ from django.conf import settings
 from django.utils.crypto import get_random_string
 from django.utils import timezone
 from datetime import timedelta
-from .models import User
+from .models import User, Appointment
 from .serializers import (
     UserRegistrationSerializer,
     UserLoginSerializer,
     PasswordResetRequestSerializer,
     PasswordResetSerializer,
-    UserSerializer
+    UserSerializer,
+    AppointmentSerializer
 )
+from rest_framework.decorators import api_view, permission_classes
 
 class UserRegistrationView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -151,4 +153,80 @@ class UserListView(generics.ListAPIView):
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [permissions.IsAdminUser] 
+    permission_classes = [permissions.IsAdminUser]
+
+class AppointmentListCreateView(generics.ListCreateAPIView):
+    serializer_class = AppointmentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Appointment.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        appointment = serializer.save(user=self.request.user)
+        # Schedule notification email
+        self.schedule_notification_email(appointment)
+
+    def schedule_notification_email(self, appointment):
+        notification_time = appointment.appointment_time - timedelta(hours=1)
+        if notification_time > timezone.now():
+            subject = 'Upcoming Appointment Reminder'
+            html_content = f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #333;">Appointment Reminder</h2>
+                <p>Hello {appointment.user.username},</p>
+                <p>This is a reminder that you have an appointment in 1 hour:</p>
+                <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px;">
+                    <p><strong>Doctor:</strong> {appointment.doctor_name}</p>
+                    <p><strong>Time:</strong> {appointment.appointment_time.strftime('%B %d, %Y at %I:%M %p')}</p>
+                    <p><strong>Reason:</strong> {appointment.reason}</p>
+                </div>
+                <p style="color: #666;">Please arrive a few minutes early for your appointment.</p>
+                <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+                <p style="color: #999; font-size: 12px;">Best regards,<br>The DocFinder Team</p>
+            </div>
+            """
+            text_content = f"""
+            Appointment Reminder
+
+            Hello {appointment.user.username},
+
+            This is a reminder that you have an appointment in 1 hour:
+
+            Doctor: {appointment.doctor_name}
+            Time: {appointment.appointment_time.strftime('%B %d, %Y at %I:%M %p')}
+            Reason: {appointment.reason}
+
+            Please arrive a few minutes early for your appointment.
+
+            Best regards,
+            The DocFinder Team
+            """
+            
+            send_mail(
+                subject=subject,
+                message=text_content,
+                html_message=html_content,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[appointment.user.email],
+                fail_silently=False,
+            )
+
+class AppointmentDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = AppointmentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Appointment.objects.filter(user=self.request.user)
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def upcoming_appointments(request):
+    now = timezone.now()
+    appointments = Appointment.objects.filter(
+        user=request.user,
+        appointment_time__gt=now
+    ).order_by('appointment_time')[:5]
+    
+    serializer = AppointmentSerializer(appointments, many=True)
+    return Response(serializer.data) 
