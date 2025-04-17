@@ -6,8 +6,37 @@ from openai import OpenAI
 import os
 from .models import ChatMessage
 import uuid
+from django.db.models import Max
 
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
+
+@api_view(['GET'])
+def get_chat_history(request):
+    # Get unique conversation IDs and their latest message timestamp
+    conversations = ChatMessage.objects.values('conversation_id').annotate(
+        last_message=Max('timestamp')
+    ).order_by('-last_message')
+
+    chat_history = []
+    for conv in conversations:
+        messages = ChatMessage.objects.filter(
+            conversation_id=conv['conversation_id']
+        ).order_by('timestamp')
+        
+        if messages:
+            chat_history.append({
+                'conversation_id': conv['conversation_id'],
+                'timestamp': conv['last_message'],
+                'messages': [{
+                    'id': msg.id,
+                    'role': msg.role,
+                    'content': msg.content,
+                    'timestamp': msg.timestamp,
+                    'is_pinned': msg.is_pinned
+                } for msg in messages]
+            })
+
+    return Response(chat_history)
 
 @api_view(['POST'])
 def chat(request):
@@ -16,7 +45,7 @@ def chat(request):
         conversation_id = request.data.get('conversation_id', str(uuid.uuid4()))
 
         # Save user message
-        ChatMessage.objects.create(
+        user_message = ChatMessage.objects.create(
             role='user',
             content=message,
             conversation_id=conversation_id
@@ -43,7 +72,7 @@ def chat(request):
         assistant_message = response.choices[0].message.content
 
         # Save assistant message
-        ChatMessage.objects.create(
+        bot_message = ChatMessage.objects.create(
             role='assistant',
             content=assistant_message,
             conversation_id=conversation_id
@@ -51,9 +80,53 @@ def chat(request):
 
         return Response({
             'response': assistant_message,
-            'conversation_id': conversation_id
+            'conversation_id': conversation_id,
+            'message_id': bot_message.id,
+            'user_message_id': user_message.id
         })
 
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@api_view(['POST'])
+def toggle_pin(request, message_id):
+    try:
+        message = ChatMessage.objects.get(id=message_id)
+        message.is_pinned = not message.is_pinned
+        message.save()
+        return Response({'is_pinned': message.is_pinned})
+    except ChatMessage.DoesNotExist:
+        return Response(
+            {'error': 'Message not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+@api_view(['GET'])
+def get_pinned_messages(request):
+    pinned_messages = ChatMessage.objects.filter(is_pinned=True).order_by('-timestamp')
+    return Response([{
+        'id': msg.id,
+        'role': msg.role,
+        'content': msg.content,
+        'timestamp': msg.timestamp,
+        'conversation_id': msg.conversation_id,
+        'is_pinned': msg.is_pinned
+    } for msg in pinned_messages])
+
+@api_view(['DELETE'])
+def delete_chat_history(request, conversation_id=None):
+    try:
+        if conversation_id:
+            # Delete specific conversation
+            ChatMessage.objects.filter(conversation_id=conversation_id).delete()
+            return Response({'message': f'Conversation {conversation_id} deleted successfully'})
+        else:
+            # Delete all conversations
+            ChatMessage.objects.all().delete()
+            return Response({'message': 'All chat history deleted successfully'})
     except Exception as e:
         return Response(
             {'error': str(e)},
