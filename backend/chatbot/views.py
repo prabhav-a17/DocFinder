@@ -1,7 +1,9 @@
 from rest_framework import status
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, parser_classes
 from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser, FormParser
 from django.conf import settings
+from django.core.files.storage import default_storage
 from openai import OpenAI
 import os
 from .models import ChatMessage
@@ -59,3 +61,51 @@ def chat(request):
             {'error': str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         ) 
+
+from PIL import Image
+import base64
+from io import BytesIO
+
+@api_view(['POST'])
+@parser_classes([MultiPartParser, FormParser])
+def upload_image(request):
+    image = request.FILES.get('image')
+
+    if not image:
+        return Response({'error': 'No image provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        # Convert image to base64
+        img = Image.open(image)
+        buffered = BytesIO()
+        img.save(buffered, format="JPEG")
+        img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
+
+        # Build base64 data URL
+        data_url = f"data:image/jpeg;base64,{img_str}"
+
+        response = client.chat.completions.create(
+            model="gpt-4-turbo",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": "Please describe this image."},
+                        {"type": "image_url", "image_url": {"url": data_url}},
+                    ],
+                }
+            ],
+            max_tokens=300,
+        )
+
+        bot_message = response.choices[0].message.content
+
+        return Response({
+            'success': True,
+            'response': bot_message
+        })
+
+    except Exception as e:
+        print("UPLOAD ERROR:", str(e))
+        traceback.print_exc()
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -88,5 +88,8 @@ REST_FRAMEWORK = {
 CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL_ORIGINS', 'True') == 'True'
 CORS_ALLOW_CREDENTIALS = True
 
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
 # OpenAI settings
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY') 
