@@ -74,11 +74,43 @@ class PasswordResetRequestView(APIView):
             user.save()
             
             reset_link = f"{settings.FRONTEND_URL}/reset-password/{token}"
+            subject = 'Password Reset Request - DocFinder'
+            html_content = f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #333;">Hello {user.username},</h2>
+                <p>We received a request to reset your password for your DocFinder account.</p>
+                <p>Click the button below to reset your password:</p>
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{reset_link}" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">Reset Password</a>
+                </div>
+                <p style="color: #666;">This link will expire in 1 hour.</p>
+                <p style="color: #666;">If you didn't request this password reset, you can safely ignore this email.</p>
+                <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+                <p style="color: #999; font-size: 12px;">Best regards,<br>The DocFinder Team</p>
+            </div>
+            """
+            text_content = f"""
+            Hello {user.username},
+
+            We received a request to reset your password for your DocFinder account.
+            Click the link below to reset your password:
+
+            {reset_link}
+
+            This link will expire in 1 hour.
+
+            If you didn't request this password reset, you can safely ignore this email.
+
+            Best regards,
+            The DocFinder Team
+            """
+            
             send_mail(
-                'Password Reset Request',
-                f'Click the following link to reset your password: {reset_link}',
-                settings.EMAIL_HOST_USER,
-                [email],
+                subject=subject,
+                message=text_content,
+                html_message=html_content,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[email],
                 fail_silently=False,
             )
             return Response({'message': 'Password reset email sent'})
