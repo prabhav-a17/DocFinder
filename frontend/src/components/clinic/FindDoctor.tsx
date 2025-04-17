@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { useParams, useNavigate } from "react-router-dom";
-import { GOOGLE_MAPS_API_KEY } from "../../config";
+import { GOOGLE_MAPS_API_KEY, API_BASE_URL } from "../../config";
 import "./FindDoctor.css";
 
 // Icons as emojis
@@ -304,7 +304,7 @@ const FindDoctor: React.FC = () => {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
-          const res = await axios.post("http://localhost:8001/api/clinic-finder/find-doctor/", {
+          const res = await axios.post(`${API_BASE_URL}/clinic-finder/find-doctor/`, {
             query: specialist,
             location: {
               lat: position.coords.latitude,
@@ -354,7 +354,7 @@ const FindDoctor: React.FC = () => {
         return;
       }
 
-      const res = await axios.post("http://localhost:8001/api/clinic-finder/find-doctor/", {
+      const res = await axios.post(`${API_BASE_URL}/clinic-finder/find-doctor/`, {
         query: specialist,
         location: {
           lat: Number(selectedPlace.lat),

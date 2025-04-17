@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Box, Typography, Paper, TextField, Button, List, ListItem, ListItemText } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
+import { useNavigate } from 'react-router-dom';
 
 interface Message {
     text: string;
     isUser: boolean;
+    specialist?: string;
 }
 
 const Chatbot: React.FC = () => {
@@ -12,6 +14,7 @@ const Chatbot: React.FC = () => {
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const messagesEndRef = useRef<null | HTMLDivElement>(null);
+    const navigate = useNavigate();
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -44,12 +47,29 @@ const Chatbot: React.FC = () => {
 
             const data = await response.json();
             
+            // Check if the response contains a specialist recommendation
+            const specialistMatch = data.response.match(/I recommend seeing a (\w+)/i);
+            const specialist = specialistMatch ? specialistMatch[1].toLowerCase() : undefined;
+
             const botMessage: Message = {
                 text: data.response,
-                isUser: false
+                isUser: false,
+                specialist
             };
 
             setMessages(prev => [...prev, botMessage]);
+
+            // If a specialist was recommended, add a button to find doctors
+            if (specialist) {
+                setTimeout(() => {
+                    const findDoctorMessage: Message = {
+                        text: `Would you like to find ${specialist}s near you?`,
+                        isUser: false,
+                        specialist
+                    };
+                    setMessages(prev => [...prev, findDoctorMessage]);
+                }, 1000);
+            }
         } catch (error) {
             console.error('Error:', error);
             const errorMessage: Message = {
@@ -67,6 +87,10 @@ const Chatbot: React.FC = () => {
             event.preventDefault();
             handleSend();
         }
+    };
+
+    const handleFindDoctor = (specialist: string) => {
+        navigate(`/find-doctor/${specialist}`);
     };
 
     return (
@@ -101,6 +125,16 @@ const Chatbot: React.FC = () => {
                                 }}
                             >
                                 <ListItemText primary={message.text} />
+                                {message.specialist && !message.isUser && (
+                                    <Button
+                                        variant="contained"
+                                        size="small"
+                                        onClick={() => handleFindDoctor(message.specialist!)}
+                                        sx={{ mt: 1 }}
+                                    >
+                                        Find {message.specialist}s
+                                    </Button>
+                                )}
                             </Paper>
                         </ListItem>
                     ))}
