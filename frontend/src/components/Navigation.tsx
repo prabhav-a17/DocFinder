@@ -5,6 +5,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store';
 import { logout } from '../store/slices/authSlice';
 import ChatIcon from '@mui/icons-material/Chat';
+import SearchIcon from '@mui/icons-material/Search';
 
 const Navigation: React.FC = () => {
     const navigate = useNavigate();
@@ -35,6 +36,14 @@ const Navigation: React.FC = () => {
                         startIcon={<ChatIcon />}
                     >
                         Chatbot
+                    </Button>
+                    <Button
+                        color="inherit"
+                        onClick={() => navigate('/find-doctor/general')}
+                        sx={{ mr: 2 }}
+                        startIcon={<SearchIcon />}
+                    >
+                        Find Doctor
                     </Button>
                     {isAuthenticated ? (
                         <>

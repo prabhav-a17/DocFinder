@@ -92,4 +92,7 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # OpenAI settings
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY') 
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+
+# Google Maps API settings
+GOOGLE_MAPS_API_KEY = os.getenv('GOOGLE_MAPS_API_KEY', '') 

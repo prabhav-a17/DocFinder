@@ -36,6 +36,9 @@ ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 # OpenAI API Key
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
+# Google Maps API Key
+GOOGLE_MAPS_API_KEY = 'AIzaSyBBe1Y3eOg1ULe3HFsVmF62OQrSC0fojks'
+
 
 # Application definition
 
@@ -166,6 +169,7 @@ CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # React development server
+    "http://localhost:3001",  # Additional React port
 ]
 
 MEDIA_URL = '/media/'

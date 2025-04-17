@@ -11,6 +11,7 @@ import Register from './components/auth/Register';
 import ForgotPassword from './components/auth/ForgotPassword';
 import ResetPassword from './components/auth/ResetPassword';
 import Chatbot from './components/Chatbot';
+import FindDoctor from './components/clinic/FindDoctor';
 import { useSelector } from 'react-redux';
 import { RootState } from './store';
 
@@ -55,6 +56,7 @@ function App() {
                             </PrivateRoute>
                         } />
                         <Route path="/chatbot" element={<Chatbot />} />
+                        <Route path="/find-doctor/:specialist" element={<FindDoctor />} />
                     </Routes>
                 </Router>
             </ThemeProvider>
