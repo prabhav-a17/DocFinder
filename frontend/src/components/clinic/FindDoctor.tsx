@@ -90,6 +90,7 @@ const timeSlots = [
 ];
 
 const FindDoctor: React.FC = () => {
+  const token = localStorage.getItem('token');
   const { specialist } = useParams<{ specialist: string }>();
   const navigate = useNavigate();
   const [address, setAddress] = useState<string>("");
@@ -124,6 +125,19 @@ const FindDoctor: React.FC = () => {
   const currentSpecialist = specialist 
     ? specialist.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
     : "General Physician";
+
+  // Add effect to handle specialist changes
+  useEffect(() => {
+    // Reset results when specialist changes
+    setResults([]);
+    setFilteredResults([]);
+    setError('');
+    
+    // If there's a selected place, perform a new search with the new specialist
+    if (selectedPlace) {
+      handleSearch();
+    }
+  }, [specialist]);
 
   // Initialize Google Maps script
   useEffect(() => {
@@ -199,6 +213,13 @@ const FindDoctor: React.FC = () => {
       }
     };
   }, [scriptLoaded]); // Only depend on scriptLoaded state
+
+  useEffect(() => {
+    if (!token) {
+      navigate('/login', { state: { from: '/find-doctor' } });
+      return;
+    }
+  }, [token, navigate]);
 
   useEffect(() => {
     let filtered = [...results];
@@ -291,6 +312,13 @@ const FindDoctor: React.FC = () => {
   }, [results, filters, sortOption]);
 
   const getCurrentLocation = () => {
+    if (!token) {
+      setError("Please log in to search for doctors");
+      setLoading(false);
+      navigate('/login', { state: { from: `/find-doctor/${specialist || ''}` } });
+      return;
+    }
+
     setError("");
     setLoading(true);
     setUsingLocation(true);
@@ -305,92 +333,123 @@ const FindDoctor: React.FC = () => {
       async (position) => {
         try {
           const res = await axios.post(`${API_BASE_URL}/clinic-finder/find-doctor/`, {
-            query: specialist,
+            query: currentSpecialist,
             location: {
               lat: position.coords.latitude,
               lng: position.coords.longitude
             }
+          }, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
           });
           if (res.data.results) {
-            setResults(res.data.results.map((result: Partial<Doctor>) => ({
+            const processedResults = res.data.results.map((result: Partial<Doctor>) => ({
               ...result,
-              distance: result.distance || 0 // Ensure distance exists
-            })));
+              distance: typeof result.distance === 'number' && !isNaN(result.distance)
+                ? Number(result.distance)
+                : Infinity
+            }));
+            setResults(processedResults);
+            setFilteredResults(processedResults);
           } else {
             setResults([]);
+            setFilteredResults([]);
+            setError("No results found in your area. Please try a different location.");
           }
         } catch (err: any) {
           console.error("Error:", err.response?.data || err.message);
-          setError(err.response?.data?.error || "Something went wrong.");
+          if (err.response?.status === 401) {
+            setError("Your session has expired. Please log in again.");
+            localStorage.removeItem('token');
+            navigate('/login', { state: { from: `/find-doctor/${specialist || ''}` } });
+          } else {
+            setError(err.response?.data?.error || "Failed to fetch doctors. Please try again.");
+          }
         } finally {
           setLoading(false);
           setUsingLocation(false);
         }
       },
       (error) => {
-        setError("Unable to retrieve your location. Please enter an address instead.");
+        console.error("Geolocation error:", error);
+        setError("Unable to retrieve your location. Please ensure location access is enabled in your browser settings.");
         setLoading(false);
         setUsingLocation(false);
       }
     );
   };
 
-  const handleSearch = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError("");
+  const handleSearch = async (e?: React.FormEvent<HTMLFormElement>) => {
+    if (e) {
+      e.preventDefault();
+    }
     setLoading(true);
+    setError("");
 
-    if (!selectedPlace && !usingLocation) {
-      setError("Please select an address from the suggestions");
+    if (!token) {
+      setError("Please log in to search for doctors");
+      setLoading(false);
+      navigate('/login', { state: { from: `/find-doctor/${specialist || ''}` } });
+      return;
+    }
+
+    if (!selectedPlace) {
+      setError("Please select a valid address");
       setLoading(false);
       return;
     }
 
     try {
-      // Make sure we have valid coordinates
-      if (!selectedPlace?.lat || !selectedPlace?.lng) {
-        setError("Invalid location data. Please select an address from the suggestions.");
-        setLoading(false);
-        return;
-      }
-
-      const res = await axios.post(`${API_BASE_URL}/clinic-finder/find-doctor/`, {
-        query: specialist,
-        location: {
-          lat: Number(selectedPlace.lat),
-          lng: Number(selectedPlace.lng)
+      const response = await axios.post(
+        `${API_BASE_URL}/clinic-finder/find-doctor/`,
+        {
+          query: currentSpecialist,
+          location: {
+            lat: selectedPlace.lat,
+            lng: selectedPlace.lng
+          }
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
         }
-      });
+      );
 
-      if (res.data.results) {
-        // Ensure all results have valid distance values
-        const processedResults = res.data.results.map((result: Partial<Doctor>) => ({
+      if (response.data.results) {
+        const processedResults = response.data.results.map((result: Partial<Doctor>) => ({
           ...result,
-          // Convert distance to number and default to Infinity if missing or invalid
-          distance: typeof result.distance === 'number' && !isNaN(result.distance) 
-            ? Number(result.distance) 
+          distance: typeof result.distance === 'number' && !isNaN(result.distance)
+            ? Number(result.distance)
             : Infinity
         }));
         setResults(processedResults);
-
-        // If no results found after processing
-        if (processedResults.length === 0) {
-          setError("No doctors found in this area. Try a different location.");
-        }
+        setFilteredResults(processedResults);
       } else {
         setResults([]);
+        setFilteredResults([]);
         setError("No results found. Please try a different location.");
       }
-    } catch (err: any) {
-      console.error("Error:", err.response?.data || err.message);
-      setError(err.response?.data?.error || "Failed to find doctors. Please try again.");
+    } catch (error: any) {
+      console.error('Search error:', error);
+      if (error.response?.status === 401) {
+        setError("Your session has expired. Please log in again.");
+        localStorage.removeItem('token');
+        navigate('/login', { state: { from: `/find-doctor/${specialist || ''}` } });
+      } else {
+        setError("Failed to fetch doctors. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const handleSpecialistChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    navigate(`/find-doctor/${e.target.value.toLowerCase().replace(/ /g, '-')}`);
+    const newSpecialist = e.target.value.toLowerCase().replace(/ /g, '-');
+    navigate(`/find-doctor/${newSpecialist}`);
   };
 
   const handleFilterChange = (filterName: keyof Filters, value: any) => {

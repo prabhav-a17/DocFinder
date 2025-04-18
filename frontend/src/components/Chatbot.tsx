@@ -10,6 +10,7 @@ interface Message {
 }
 
 const Chatbot: React.FC = () => {
+    const token = localStorage.getItem('token');
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -40,6 +41,7 @@ const Chatbot: React.FC = () => {
             const response = await fetch('http://localhost:8001/api/chat/', {
                 method: 'POST',
                 headers: {
+                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({ message: input }),
