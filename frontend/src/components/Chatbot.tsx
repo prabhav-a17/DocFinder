@@ -1,171 +1,251 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Box, Typography, Paper, TextField, Button, List, ListItem, ListItemText } from '@mui/material';
-import SendIcon from '@mui/icons-material/Send';
 import { useNavigate } from 'react-router-dom';
+import { FaPaperPlane, FaSearch, FaUserMd } from 'react-icons/fa';
+import { useSelector } from 'react-redux';
+import { RootState } from '../store';
+import { toast } from 'react-toastify';
+import { IconType } from 'react-icons';
+import '../styles/Chatbot.css';
 
 interface Message {
-    text: string;
-    isUser: boolean;
-    specialist?: string;
+  content: string;
+  role: 'user' | 'assistant';
 }
 
+const IconWrapper = ({ Icon, ...props }: { Icon: IconType; [key: string]: any }) => {
+  const IconComponent = Icon as React.ComponentType<any>;
+  return <IconComponent {...props} />;
+};
+
+// Mapping of specialist variations to standardized search terms
+const specialistMapping: { [key: string]: string } = {
+  "Primary Care Physician": "Primary Care",
+  "Cardiologist": "Cardiology",
+  "Dermatologist": "Dermatology",
+  "Endocrinologist": "Endocrinology",
+  "Gastroenterologist": "Gastroenterology",
+  "Neurologist": "Neurology",
+  "Obstetrician/Gynecologist": "OBGYN",
+  "Oncologist": "Oncology",
+  "Ophthalmologist": "Ophthalmology",
+  "Orthopedist": "Orthopedics",
+  "Otolaryngologist": "otolaryngologist-(ent)",
+  "ENT": "otolaryngologist-(ent)",
+  "ENT Specialist": "otolaryngologist-(ent)",
+  "Otolaryngologist (ENT)": "otolaryngologist-(ent)",
+  "Pediatrician": "Pediatrics",
+  "Psychiatrist": "Psychiatry",
+  "Pulmonologist": "Pulmonology",
+  "Rheumatologist": "Rheumatology",
+  "Urologist": "Urology",
+  "Allergist": "Allergy",
+  "Immunologist": "Immunology",
+  "Nephrologist": "Nephrology",
+  "Hematologist": "Hematology",
+  "Pain Management Specialist": "Pain Management",
+  "Physical Medicine Specialist": "Physical Medicine",
+  "Rehabilitation Specialist": "Rehabilitation",
+  "Plastic Surgeon": "Plastic Surgery",
+  "Podiatrist": "Podiatry",
+  "Sports Medicine Specialist": "Sports Medicine",
+  "Vascular Surgeon": "Vascular Surgery",
+  "Dentist": "Dental",
+  "Chiropractor": "Chiropractic",
+  "Emergency Medicine Physician": "Emergency Medicine"
+};
+
+const specialistTypes = Object.keys(specialistMapping);
+
 const Chatbot: React.FC = () => {
-    const token = localStorage.getItem('token');
-    const [messages, setMessages] = useState<Message[]>([]);
-    const [input, setInput] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const messagesEndRef = useRef<null | HTMLDivElement>(null);
-    const navigate = useNavigate();
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const messagesEndRef = useRef<null | HTMLDivElement>(null);
+  const navigate = useNavigate();
+  const { token } = useSelector((state: RootState) => state.auth);
 
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    };
+  const extractSpecialist = (text: string): string | null => {
+    // First, try to find a direct match in the "Would you like me to find a [specialist] near you?" format
+    const findDoctorMatch = text.match(/Would you like (?:me )?to find (?:an?|the) ([^?]+?) (?:near you|in your area)\??/i);
+    if (findDoctorMatch) {
+      const matchedSpecialist = findDoctorMatch[1].trim();
+      // Check if the matched specialist is in our list
+      const foundSpecialist = specialistTypes.find(type => 
+        type.toLowerCase() === matchedSpecialist.toLowerCase() ||
+        matchedSpecialist.toLowerCase().includes(type.toLowerCase())
+      );
+      if (foundSpecialist) return foundSpecialist;
+    }
 
-    useEffect(() => {
-        scrollToBottom();
-    }, [messages]);
+    // Then try to find any specialist mention in the text
+    for (const specialist of specialistTypes) {
+      // Create variations of the specialist name
+      const variations = [
+        specialist,
+        specialist.toLowerCase(),
+        specialist.replace('/', ' or '),
+        specialist.replace('/', ' '),
+        specialist.split('/')[0], // Take first part of split specialties
+        specialist.split('(')[0].trim() // Remove parenthetical descriptions
+      ];
 
-    const handleSend = async () => {
-        if (!input.trim()) return;
-
-        const userMessage: Message = {
-            text: input,
-            isUser: true
-        };
-
-        setMessages(prev => [...prev, userMessage]);
-        setInput('');
-        setIsLoading(true);
-
-        try {
-            const response = await fetch('http://localhost:8001/api/chat/', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ message: input }),
-            });
-
-            const data = await response.json();
-            
-            // Check if the response contains a specialist recommendation
-            const specialistMatch = data.response.match(/I recommend seeing a (\w+)/i);
-            const specialist = specialistMatch ? specialistMatch[1].toLowerCase() : undefined;
-
-            const botMessage: Message = {
-                text: data.response,
-                isUser: false,
-                specialist
-            };
-
-            setMessages(prev => [...prev, botMessage]);
-
-            // If a specialist was recommended, add a button to find doctors
-            if (specialist) {
-                setTimeout(() => {
-                    const findDoctorMessage: Message = {
-                        text: `Would you like to find ${specialist}s near you?`,
-                        isUser: false,
-                        specialist
-                    };
-                    setMessages(prev => [...prev, findDoctorMessage]);
-                }, 1000);
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            const errorMessage: Message = {
-                text: 'Sorry, I encountered an error. Please try again.',
-                isUser: false
-            };
-            setMessages(prev => [...prev, errorMessage]);
-        } finally {
-            setIsLoading(false);
+      // Check for each variation in the text
+      for (const variation of variations) {
+        if (text.toLowerCase().includes(variation.toLowerCase())) {
+          return specialist;
         }
-    };
+      }
+    }
 
-    const handleKeyPress = (event: React.KeyboardEvent) => {
-        if (event.key === 'Enter' && !event.shiftKey) {
-            event.preventDefault();
-            handleSend();
-        }
-    };
+    // Look for "see a/an [specialist]" pattern
+    const seeSpecialistMatch = text.match(/(?:should |need to |recommend |visit |see )(?:a|an|the) ([^.,!?]+?)(?=\.|,|!|\?|$)/gi);
+    if (seeSpecialistMatch) {
+      for (const match of seeSpecialistMatch) {
+        const potentialSpecialist = match.replace(/(?:should |need to |recommend |visit |see )(?:a|an|the) /i, '').trim();
+        const foundSpecialist = specialistTypes.find(type => 
+          type.toLowerCase() === potentialSpecialist.toLowerCase() ||
+          potentialSpecialist.toLowerCase().includes(type.toLowerCase())
+        );
+        if (foundSpecialist) return foundSpecialist;
+      }
+    }
 
-    const handleFindDoctor = (specialist: string) => {
-        navigate(`/find-doctor/${specialist}`);
-    };
+    return null;
+  };
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const handleSend = async () => {
+    if (!input.trim()) return;
+
+    if (!token) {
+      toast.error('Please log in to use the chatbot');
+      navigate('/login');
+      return;
+    }
+
+    const userMessage = input.trim();
+    setInput('');
+    setIsLoading(true);
+
+    // Add user message to chat
+    setMessages(prev => [...prev, { content: userMessage, role: 'user' }]);
+
+    try {
+      const response = await fetch('http://localhost:8001/api/chat/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          message: userMessage,
+          conversation_id: conversationId
+        }),
+      });
+
+      if (response.status === 401) {
+        toast.error('Session expired. Please log in again.');
+        navigate('/login');
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status} - ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const botMessage = data.response;
+      
+      // Save the conversation ID if it's a new conversation
+      if (data.conversation_id && !conversationId) {
+        setConversationId(data.conversation_id);
+      }
+
+      // Add bot message to chat
+      setMessages(prev => [...prev, { content: botMessage, role: 'assistant' }]);
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Failed to get response from chatbot. Please try again.');
+      setMessages(prev => [...prev, {
+        content: 'Sorry, I encountered an error. Please try again.',
+        role: 'assistant'
+      }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const navigateToFindDoctor = (specialist: string) => {
+    const searchTerm = specialistMapping[specialist] || specialist;
+    navigate(`/find-doctor/${searchTerm}`);
+  };
+
+  const renderMessage = (message: Message, index: number) => {
+    const specialist = message.role === 'assistant' ? extractSpecialist(message.content) : null;
+    console.log('Message content:', message.content);
+    console.log('Extracted specialist:', specialist);
 
     return (
-        <Paper elevation={3} sx={{ p: 3, height: '70vh', display: 'flex', flexDirection: 'column' }}>
-            <Typography variant="h5" gutterBottom>
-                DocFinder Chat
-            </Typography>
-            <Box sx={{ 
-                flexGrow: 1, 
-                overflow: 'auto',
-                bgcolor: 'grey.50',
-                borderRadius: 1,
-                mb: 2,
-                p: 2
-            }}>
-                <List>
-                    {messages.map((message, index) => (
-                        <ListItem
-                            key={index}
-                            sx={{
-                                justifyContent: message.isUser ? 'flex-end' : 'flex-start',
-                                mb: 1
-                            }}
-                        >
-                            <Paper
-                                elevation={1}
-                                sx={{
-                                    p: 2,
-                                    maxWidth: '70%',
-                                    bgcolor: message.isUser ? 'primary.main' : 'background.paper',
-                                    color: message.isUser ? 'white' : 'text.primary'
-                                }}
-                            >
-                                <ListItemText primary={message.text} />
-                                {message.specialist && !message.isUser && (
-                                    <Button
-                                        variant="contained"
-                                        size="small"
-                                        onClick={() => handleFindDoctor(message.specialist!)}
-                                        sx={{ mt: 1 }}
-                                    >
-                                        Find {message.specialist}s
-                                    </Button>
-                                )}
-                            </Paper>
-                        </ListItem>
-                    ))}
-                    <div ref={messagesEndRef} />
-                </List>
-            </Box>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-                <TextField
-                    fullWidth
-                    multiline
-                    maxRows={4}
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder="Type your message..."
-                    disabled={isLoading}
-                    sx={{ flexGrow: 1 }}
-                />
-                <Button
-                    variant="contained"
-                    endIcon={<SendIcon />}
-                    onClick={handleSend}
-                    disabled={isLoading || !input.trim()}
-                >
-                    Send
-                </Button>
-            </Box>
-        </Paper>
+      <div key={index} className={`message ${message.role}`}>
+        <div className="message-content">
+          {message.content}
+          {specialist && (
+            <button 
+              className="find-doctor-btn"
+              onClick={() => navigateToFindDoctor(specialist)}
+            >
+              <IconWrapper Icon={FaUserMd} /> Find {specialist}
+            </button>
+          )}
+        </div>
+      </div>
     );
+  };
+
+  return (
+    <div className="chatbot-container">
+      <div className="messages-container">
+        {messages.map((message, index) => renderMessage(message, index))}
+        {isLoading && (
+          <div className="message assistant">
+            <div className="loading-dots">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+      <div className="input-container">
+        <textarea
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyPress={handleKeyPress}
+          placeholder="Describe your symptoms..."
+          rows={1}
+        />
+        <button onClick={handleSend} disabled={isLoading}>
+          <IconWrapper Icon={FaPaperPlane} />
+        </button>
+      </div>
+    </div>
+  );
 };
 
 export default Chatbot; 

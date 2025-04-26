@@ -43,8 +43,77 @@ def get_chat_history(request):
 @api_view(['POST'])
 def chat(request):
     try:
+        # Check if API key is available
+        if not settings.OPENAI_API_KEY:
+            print("OpenAI API key is not set in settings")
+            return Response(
+                {"error": "OpenAI API key is not configured"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        # Initialize OpenAI client with fresh API key
+        client = OpenAI(api_key=settings.OPENAI_API_KEY)
+        
         message = request.data.get('message', '')
         conversation_id = request.data.get('conversation_id', str(uuid.uuid4()))
+
+        # Get conversation history
+        previous_messages = ChatMessage.objects.filter(
+            conversation_id=conversation_id
+        ).order_by('timestamp')
+
+        # Build the messages array with system prompt and history
+        messages = [
+            {"role": "system", "content": """You are DocFinder AI, a medical assistant focused on quickly identifying symptoms and recommending appropriate specialists from our network. Follow these rules:
+
+1. BE CONCISE. Keep responses under 3 sentences unless absolutely necessary.
+2. For symptom queries, ONLY recommend from this specific list of specialists:
+   - Primary Care Physician (for general health issues, initial assessments)
+   - Cardiologist (heart and blood vessel issues)
+   - Dermatologist (skin conditions)
+   - Endocrinologist (hormonal and metabolic disorders)
+   - Gastroenterologist (digestive system)
+   - Neurologist (brain and nervous system)
+   - Obstetrician/Gynecologist (women's health)
+   - Oncologist (cancer-related concerns)
+   - Ophthalmologist (eye care)
+   - Orthopedist (bones and joints)
+   - Otolaryngologist (ENT) (ear, nose, throat issues)
+   - Pediatrician (children's health)
+   - Psychiatrist (mental health)
+   - Pulmonologist (respiratory system)
+   - Rheumatologist (autoimmune and joint diseases)
+   - Urologist (urinary system)
+   - Allergist/Immunologist (allergies and immune system)
+   - Nephrologist (kidney diseases)
+   - Hematologist (blood disorders)
+   - Pain Management Specialist
+   - Physical Medicine & Rehabilitation Specialist
+   - Sports Medicine Specialist
+   - Emergency Medicine Physician (urgent/emergency care)
+
+3. When recommending:
+   - Briefly explain why that specialist is best suited
+   - ALWAYS end with: "Would you like me to find a [EXACT SPECIALIST NAME] near you?"
+   - Use the EXACT specialist names from the list above
+
+4. DO NOT:
+   - Give medical advice or diagnoses
+   - Recommend specialists not on this list
+   - Use generic terms like "GP" or "doctor"
+   - Ask multiple questions
+   - Be overly verbose"""}
+        ]
+
+        # Add conversation history
+        for prev_message in previous_messages:
+            messages.append({
+                "role": prev_message.role,
+                "content": prev_message.content
+            })
+
+        # Add the new user message
+        messages.append({"role": "user", "content": message})
 
         # Save user message
         user_message = ChatMessage.objects.create(
@@ -53,43 +122,40 @@ def chat(request):
             conversation_id=conversation_id
         )
 
-        # Get conversation history
-        messages = [
-            {"role": "system", "content": "You are a helpful assistant that helps users find and understand documents."}
-        ]
-        
-        # Add conversation history
-        history = ChatMessage.objects.filter(conversation_id=conversation_id).order_by('timestamp')
-        for msg in history:
-            messages.append({"role": msg.role, "content": msg.content})
+        try:
+            # Get response from OpenAI
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=messages,
+                temperature=0.7,
+                max_tokens=500
+            )
+            
+            bot_response = response.choices[0].message.content
 
-        # Call OpenAI API
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=messages,
-            max_tokens=1000,
-            temperature=0.7,
-        )
+            # Save bot response
+            bot_message = ChatMessage.objects.create(
+                role='assistant',
+                content=bot_response,
+                conversation_id=conversation_id
+            )
 
-        assistant_message = response.choices[0].message.content
+            return Response({
+                "response": bot_response,
+                "conversation_id": conversation_id
+            })
 
-        # Save assistant message
-        bot_message = ChatMessage.objects.create(
-            role='assistant',
-            content=assistant_message,
-            conversation_id=conversation_id
-        )
-
-        return Response({
-            'response': assistant_message,
-            'conversation_id': conversation_id,
-            'message_id': bot_message.id,
-            'user_message_id': user_message.id
-        })
+        except Exception as e:
+            print(f"OpenAI API error: {str(e)}")
+            return Response(
+                {"error": "Failed to get response from OpenAI API"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     except Exception as e:
+        print(f"General error in chat view: {str(e)}")
         return Response(
-            {'error': str(e)},
+            {"error": "An unexpected error occurred"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 

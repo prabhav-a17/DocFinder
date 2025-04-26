@@ -50,17 +50,70 @@ interface SortOption {
   direction: 'asc' | 'desc';
 }
 
+// Mapping of standardized terms to display names
+const specialistDisplayNames: { [key: string]: string } = {
+  "Primary Care": "Primary Care Physician",
+  "Cardiology": "Cardiologist",
+  "Dermatology": "Dermatologist",
+  "Endocrinology": "Endocrinologist",
+  "Gastroenterology": "Gastroenterologist",
+  "Neurology": "Neurologist",
+  "OBGYN": "Obstetrician/Gynecologist",
+  "Oncology": "Oncologist",
+  "Ophthalmology": "Ophthalmologist",
+  "Orthopedics": "Orthopedist",
+  "otolaryngologist-(ent)": "Otolaryngologist (ENT)",
+  "Pediatrics": "Pediatrician",
+  "Psychiatry": "Psychiatrist",
+  "Pulmonology": "Pulmonologist",
+  "Rheumatology": "Rheumatologist",
+  "Urology": "Urologist",
+  "Allergy": "Allergist",
+  "Immunology": "Immunologist",
+  "Nephrology": "Nephrologist",
+  "Hematology": "Hematologist",
+  "Pain Management": "Pain Management Specialist",
+  "Physical Medicine": "Physical Medicine Specialist",
+  "Rehabilitation": "Rehabilitation Specialist",
+  "Plastic Surgery": "Plastic Surgeon",
+  "Podiatry": "Podiatrist",
+  "Sports Medicine": "Sports Medicine Specialist",
+  "Vascular Surgery": "Vascular Surgeon",
+  "Dental": "Dentist",
+  "Chiropractic": "Chiropractor",
+  "Emergency Medicine": "Emergency Medicine Physician"
+};
+
 const specialistTypes = [
-  "General Physician",
-  "Cardiologist",
-  "Dermatologist",
-  "Neurologist",
-  "Pediatrician",
-  "Psychiatrist",
-  "Orthopedist",
-  "Gynecologist",
-  "Ophthalmologist",
-  "ENT Specialist"
+  "Primary Care Physician",
+  "Cardiologist", // Heart and blood vessels
+  "Dermatologist", // Skin conditions
+  "Endocrinologist", // Hormonal and metabolic disorders
+  "Gastroenterologist", // Digestive system
+  "Neurologist", // Brain and nervous system
+  "Obstetrician/Gynecologist", // Women's health
+  "Oncologist", // Cancer
+  "Ophthalmologist", // Eye care
+  "Orthopedist", // Bones and joints
+  "Otolaryngologist (ENT)", // Ear, nose, and throat
+  "Pediatrician", // Children's health
+  "Psychiatrist", // Mental health
+  "Pulmonologist", // Respiratory system
+  "Rheumatologist", // Autoimmune and joint diseases
+  "Urologist", // Urinary system
+  "Allergist/Immunologist", // Allergies and immune system
+  "Nephrologist", // Kidney diseases
+  "Hematologist", // Blood disorders
+  "Infectious Disease Specialist",
+  "Pain Management Specialist",
+  "Physical Medicine & Rehabilitation",
+  "Plastic Surgeon",
+  "Podiatrist", // Foot and ankle
+  "Sports Medicine Specialist",
+  "Vascular Surgeon",
+  "Dentist",
+  "Chiropractor",
+  "Emergency Medicine Physician"
 ];
 
 const distanceOptions = [5, 10, 20, 50];
@@ -91,12 +144,12 @@ const timeSlots = [
 
 const FindDoctor: React.FC = () => {
   const token = localStorage.getItem('token');
-  const { specialist } = useParams<{ specialist: string }>();
+  const { specialist } = useParams<{ specialist?: string }>();
   const navigate = useNavigate();
   const [address, setAddress] = useState<string>("");
   const [results, setResults] = useState<Doctor[]>([]);
   const [filteredResults, setFilteredResults] = useState<Doctor[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
   const [usingLocation, setUsingLocation] = useState<boolean>(false);
   const autocompleteInputRef = useRef<HTMLInputElement>(null);
@@ -122,22 +175,18 @@ const FindDoctor: React.FC = () => {
     direction: 'asc'
   });
 
-  const currentSpecialist = specialist 
-    ? specialist.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
-    : "General Physician";
+  const [selectedSpecialty, setSelectedSpecialty] = useState<string>("");
 
-  // Add effect to handle specialist changes
   useEffect(() => {
-    // Reset results when specialist changes
-    setResults([]);
-    setFilteredResults([]);
-    setError('');
-    
-    // If there's a selected place, perform a new search with the new specialist
-    if (selectedPlace) {
-      handleSearch();
+    if (specialist) {
+      const displayName = specialistDisplayNames[specialist] || specialist;
+      setSelectedSpecialty(displayName);
+      // Only trigger search if we have a location
+      if (selectedPlace || usingLocation) {
+        handleSearch(displayName);
+      }
     }
-  }, [specialist]);
+  }, [specialist, selectedPlace, usingLocation]);
 
   // Initialize Google Maps script
   useEffect(() => {
@@ -314,18 +363,18 @@ const FindDoctor: React.FC = () => {
   const getCurrentLocation = () => {
     if (!token) {
       setError("Please log in to search for doctors");
-      setLoading(false);
+      setIsLoading(false);
       navigate('/login', { state: { from: `/find-doctor/${specialist || ''}` } });
       return;
     }
 
     setError("");
-    setLoading(true);
+    setIsLoading(true);
     setUsingLocation(true);
 
     if (!navigator.geolocation) {
       setError("Geolocation is not supported by your browser");
-      setLoading(false);
+      setIsLoading(false);
       return;
     }
 
@@ -333,7 +382,7 @@ const FindDoctor: React.FC = () => {
       async (position) => {
         try {
           const res = await axios.post(`${API_BASE_URL}/clinic-finder/find-doctor/`, {
-            query: currentSpecialist,
+            query: selectedSpecialty,
             location: {
               lat: position.coords.latitude,
               lng: position.coords.longitude
@@ -368,83 +417,108 @@ const FindDoctor: React.FC = () => {
             setError(err.response?.data?.error || "Failed to fetch doctors. Please try again.");
           }
         } finally {
-          setLoading(false);
+          setIsLoading(false);
           setUsingLocation(false);
         }
       },
       (error) => {
         console.error("Geolocation error:", error);
         setError("Unable to retrieve your location. Please ensure location access is enabled in your browser settings.");
-        setLoading(false);
+        setIsLoading(false);
         setUsingLocation(false);
       }
     );
   };
 
-  const handleSearch = async (e?: React.FormEvent<HTMLFormElement>) => {
-    if (e) {
-      e.preventDefault();
+  const handleSearchResults = (data: any) => {
+    if (data.results) {
+      const processedResults = data.results.map((result: Partial<Doctor>) => ({
+        ...result,
+        distance: typeof result.distance === 'number' && !isNaN(result.distance)
+          ? Number(result.distance)
+          : Infinity
+      }));
+      setResults(processedResults);
+      setFilteredResults(processedResults);
+    } else {
+      setResults([]);
+      setFilteredResults([]);
+      setError("No results found. Please try a different location.");
     }
-    setLoading(true);
-    setError("");
+    setIsLoading(false);
+  };
 
-    if (!token) {
-      setError("Please log in to search for doctors");
-      setLoading(false);
+  const handleSearchError = (err: any) => {
+    console.error('Search error:', err);
+    if (err.response?.status === 401) {
+      setError("Your session has expired. Please log in again.");
+      localStorage.removeItem('token');
       navigate('/login', { state: { from: `/find-doctor/${specialist || ''}` } });
-      return;
+    } else {
+      setError("Failed to fetch doctors. Please try again.");
     }
+    setIsLoading(false);
+  };
 
-    if (!selectedPlace) {
-      setError("Please select a valid address");
-      setLoading(false);
-      return;
-    }
+  const handleSearch = async (specialtyOverride?: string) => {
+    setError('');
+    setIsLoading(true);
+    setResults([]);
+    setFilteredResults([]);
 
-    try {
-      const response = await axios.post(
-        `${API_BASE_URL}/clinic-finder/find-doctor/`,
-        {
-          query: currentSpecialist,
-          location: {
-            lat: selectedPlace.lat,
-            lng: selectedPlace.lng
+    const searchSpecialty = specialtyOverride || selectedSpecialty;
+
+    if (usingLocation) {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            try {
+              const res = await axios.post(`${API_BASE_URL}/clinic-finder/find-doctor/`, {
+                query: searchSpecialty,
+                location: {
+                  lat: position.coords.latitude,
+                  lng: position.coords.longitude
+                }
+              });
+              handleSearchResults(res.data);
+            } catch (err) {
+              handleSearchError(err);
+            }
+          },
+          (err) => {
+            setError('Error getting your location. Please enter an address.');
+            setIsLoading(false);
           }
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
+        );
+      } else {
+        setError('Geolocation is not supported by your browser');
+        setIsLoading(false);
+      }
+    } else if (selectedPlace) {
+      try {
+        const res = await axios.post(
+          `${API_BASE_URL}/clinic-finder/find-doctor/`,
+          {
+            query: searchSpecialty,
+            location: {
+              lat: selectedPlace.lat,
+              lng: selectedPlace.lng
+            }
           }
-        }
-      );
-
-      if (response.data.results) {
-        const processedResults = response.data.results.map((result: Partial<Doctor>) => ({
-          ...result,
-          distance: typeof result.distance === 'number' && !isNaN(result.distance)
-            ? Number(result.distance)
-            : Infinity
-        }));
-        setResults(processedResults);
-        setFilteredResults(processedResults);
-      } else {
-        setResults([]);
-        setFilteredResults([]);
-        setError("No results found. Please try a different location.");
+        );
+        handleSearchResults(res.data);
+      } catch (err) {
+        handleSearchError(err);
       }
-    } catch (error: any) {
-      console.error('Search error:', error);
-      if (error.response?.status === 401) {
-        setError("Your session has expired. Please log in again.");
-        localStorage.removeItem('token');
-        navigate('/login', { state: { from: `/find-doctor/${specialist || ''}` } });
-      } else {
-        setError("Failed to fetch doctors. Please try again.");
-      }
-    } finally {
-      setLoading(false);
+    } else {
+      setError('Please enter a location or use your current location');
+      setIsLoading(false);
     }
+  };
+
+  const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    handleSearch();
   };
 
   const handleSpecialistChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -497,7 +571,7 @@ const FindDoctor: React.FC = () => {
         <h1>Find a</h1>
         <div className="specialist-select-container">
           <select 
-            value={currentSpecialist.toLowerCase().replace(/ /g, '-')} 
+            value={selectedSpecialty.toLowerCase().replace(/ /g, '-')} 
             onChange={handleSpecialistChange}
             aria-label="Select specialist type"
           >
@@ -511,7 +585,7 @@ const FindDoctor: React.FC = () => {
             ))}
           </select>
         </div>
-        <p>Enter your address or use your current location to find local {currentSpecialist.toLowerCase()} near you.</p>
+        <p>Enter your address or use your current location to find local {selectedSpecialty.toLowerCase()} near you.</p>
       </div>
 
       <div className="find-doctor-body">
@@ -696,7 +770,7 @@ const FindDoctor: React.FC = () => {
 
         {/* Main content column */}
         <main className="content-section">
-          <form onSubmit={handleSearch} className="find-doctor-form">
+          <form onSubmit={handleFormSubmit} className="find-doctor-form">
             <input
               ref={autocompleteInputRef}
               type="text"
@@ -724,7 +798,7 @@ const FindDoctor: React.FC = () => {
             </button>
           </form>
 
-          {loading && <div className="loading">Loading results...</div>}
+          {isLoading && <div className="loading">Loading results...</div>}
 
           {/* Sort Section */}
           {filteredResults.length > 0 && (
@@ -803,7 +877,7 @@ const FindDoctor: React.FC = () => {
                 </div>
               ))
             ) : (
-              !loading && <p className="no-results">No results found with current filters. Try adjusting your search criteria.</p>
+              !isLoading && <p className="no-results">No results found with current filters. Try adjusting your search criteria.</p>
             )}
           </div>
 
