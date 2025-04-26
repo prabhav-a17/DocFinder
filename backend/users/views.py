@@ -19,6 +19,7 @@ from .serializers import (
 )
 from rest_framework.decorators import api_view, permission_classes
 import logging
+from .tasks import send_appointment_reminder_email
 
 logger = logging.getLogger(__name__)
 
@@ -171,53 +172,18 @@ class AppointmentListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         appointment = serializer.save(user=self.request.user)
-        # Schedule notification email
-        self.schedule_notification_email(appointment)
+        # Schedule Celery task for reminder
+        self.schedule_reminder_task(appointment)
 
-    def schedule_notification_email(self, appointment):
-        notification_time = appointment.appointment_time - timedelta(hours=1)
-        if notification_time > timezone.now():
-            subject = 'Upcoming Appointment Reminder'
-            html_content = f"""
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #333;">Appointment Reminder</h2>
-                <p>Hello {appointment.user.username},</p>
-                <p>This is a reminder that you have an appointment in 1 hour:</p>
-                <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px;">
-                    <p><strong>Doctor:</strong> {appointment.doctor_name}</p>
-                    <p><strong>Time:</strong> {appointment.appointment_time.strftime('%B %d, %Y at %I:%M %p')}</p>
-                    <p><strong>Reason:</strong> {appointment.reason}</p>
-                </div>
-                <p style="color: #666;">Please arrive a few minutes early for your appointment.</p>
-                <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-                <p style="color: #999; font-size: 12px;">Best regards,<br>The DocFinder Team</p>
-            </div>
-            """
-            text_content = f"""
-            Appointment Reminder
+    def perform_update(self, serializer):
+        appointment = serializer.save(user=self.request.user)
+        self.schedule_reminder_task(appointment)
 
-            Hello {appointment.user.username},
-
-            This is a reminder that you have an appointment in 1 hour:
-
-            Doctor: {appointment.doctor_name}
-            Time: {appointment.appointment_time.strftime('%B %d, %Y at %I:%M %p')}
-            Reason: {appointment.reason}
-
-            Please arrive a few minutes early for your appointment.
-
-            Best regards,
-            The DocFinder Team
-            """
-            
-            send_mail(
-                subject=subject,
-                message=text_content,
-                html_message=html_content,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[appointment.user.email],
-                fail_silently=False,
-            )
+    def schedule_reminder_task(self, appointment):
+        # Calculate when to send the reminder
+        reminder_time = appointment.appointment_time - timedelta(minutes=appointment.notification_minutes_before)
+        if reminder_time > timezone.now():
+            send_appointment_reminder_email.apply_async((appointment.id,), eta=reminder_time)
 
 class AppointmentDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = AppointmentSerializer

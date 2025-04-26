@@ -479,6 +479,11 @@ const FindDoctor: React.FC = () => {
                   lat: position.coords.latitude,
                   lng: position.coords.longitude
                 }
+              }, {
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                }
               });
               handleSearchResults(res.data);
             } catch (err) {
@@ -503,6 +508,12 @@ const FindDoctor: React.FC = () => {
             location: {
               lat: selectedPlace.lat,
               lng: selectedPlace.lng
+            }
+          },
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
             }
           }
         );

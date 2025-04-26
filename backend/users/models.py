@@ -28,6 +28,7 @@ class Appointment(models.Model):
     notification_sent = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    notification_minutes_before = models.PositiveIntegerField(default=60)  # Default: 1 hour before
 
     class Meta:
         ordering = ['appointment_time']

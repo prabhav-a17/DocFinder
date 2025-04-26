@@ -8,6 +8,8 @@ import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store';
 import { logout } from '../store/slices/authSlice';
 import '../styles/Appointments.css';
+import { IconType } from 'react-icons';
+import { FaCalendarPlus, FaEdit, FaTrash, FaClock, FaHospital, FaFileAlt, FaCalendarAlt } from 'react-icons/fa';
 
 interface Appointment {
   id?: number;
@@ -16,15 +18,12 @@ interface Appointment {
   appointment_time: string;
   reason: string;
   created_at?: string;
-  notification_minutes_before: number;
 }
 
-const NOTIFICATION_OPTIONS = [
-  { label: '15 minutes before', value: 15 },
-  { label: '30 minutes before', value: 30 },
-  { label: '1 hour before', value: 60 },
-  { label: 'Custom', value: 'custom' }
-];
+const IconWrapper = ({ Icon, ...props }: { Icon: IconType; [key: string]: any }) => {
+  const IconComponent = Icon as React.ComponentType<any>;
+  return <IconComponent {...props} />;
+};
 
 const Appointments: React.FC = () => {
   const navigate = useNavigate();
@@ -36,12 +35,10 @@ const Appointments: React.FC = () => {
   const [formData, setFormData] = useState<Appointment>({
     doctor_name: '',
     appointment_time: '',
-    reason: '',
-    notification_minutes_before: 60
+    reason: ''
   });
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [notificationTime, setNotificationTime] = useState<number | 'custom'>(60);
-  const [customNotification, setCustomNotification] = useState<number>(60);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!token) {
@@ -62,6 +59,7 @@ const Appointments: React.FC = () => {
   };
 
   const fetchAppointments = async () => {
+    setIsLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/auth/appointments/`, {
         headers: {
@@ -72,7 +70,9 @@ const Appointments: React.FC = () => {
       
       if (response.ok) {
         const data = await response.json();
-        setAppointments(data);
+        setAppointments(data.sort((a: Appointment, b: Appointment) => 
+          new Date(a.appointment_time).getTime() - new Date(b.appointment_time).getTime()
+        ));
       } else if (response.status === 401) {
         handleAuthError({ response });
       } else {
@@ -80,16 +80,27 @@ const Appointments: React.FC = () => {
       }
     } catch (error: any) {
       handleAuthError(error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const minutesBefore = notificationTime === 'custom' ? customNotification : notificationTime;
+    
+    // Validate form
+    if (!formData.doctor_name.trim()) {
+      toast.error('Please enter a doctor name');
+      return;
+    }
+    if (!formData.reason.trim()) {
+      toast.error('Please enter a reason for the appointment');
+      return;
+    }
+
     const appointmentData = {
       ...formData,
-      appointment_time: selectedDate.toISOString(),
-      notification_minutes_before: minutesBefore
+      appointment_time: selectedDate.toISOString()
     };
 
     try {
@@ -109,17 +120,13 @@ const Appointments: React.FC = () => {
       });
 
       if (response.ok) {
-        const savedAppointment = await response.json();
         toast.success(editingId ? 'Appointment updated!' : 'Appointment created!');
         setIsFormOpen(false);
         setFormData({
           doctor_name: '',
           appointment_time: '',
-          reason: '',
-          notification_minutes_before: 60
+          reason: ''
         });
-        setNotificationTime(60);
-        setCustomNotification(60);
         setEditingId(null);
         fetchAppointments();
       } else if (response.status === 401) {
@@ -137,16 +144,9 @@ const Appointments: React.FC = () => {
     setFormData({
       doctor_name: appointment.doctor_name,
       appointment_time: appointment.appointment_time,
-      reason: appointment.reason,
-      notification_minutes_before: appointment.notification_minutes_before || 60
+      reason: appointment.reason
     });
     setSelectedDate(new Date(appointment.appointment_time));
-    setNotificationTime(appointment.notification_minutes_before ? 
-      NOTIFICATION_OPTIONS.find(opt => opt.value === appointment.notification_minutes_before) ? 
-      appointment.notification_minutes_before : 'custom' 
-      : 60
-    );
-    setCustomNotification(appointment.notification_minutes_before || 60);
     setEditingId(appointment.id ?? null);
     setIsFormOpen(true);
   };
@@ -175,6 +175,17 @@ const Appointments: React.FC = () => {
     }
   };
 
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   return (
     <div className="appointments-container">
       <div className="appointments-header">
@@ -187,12 +198,11 @@ const Appointments: React.FC = () => {
             setFormData({
               doctor_name: '',
               appointment_time: '',
-              reason: '',
-              notification_minutes_before: 60
+              reason: ''
             });
           }}
         >
-          New Appointment
+          <IconWrapper Icon={FaCalendarPlus} /> New Appointment
         </button>
       </div>
 
@@ -202,7 +212,7 @@ const Appointments: React.FC = () => {
             <h2>{editingId ? 'Edit Appointment' : 'New Appointment'}</h2>
             
             <div className="form-group">
-              <label>Doctor Name:</label>
+              <label><IconWrapper Icon={FaHospital} /> Doctor Name:</label>
               <input
                 type="text"
                 value={formData.doctor_name}
@@ -213,7 +223,7 @@ const Appointments: React.FC = () => {
             </div>
 
             <div className="form-group">
-              <label>Appointment Date & Time:</label>
+              <label><IconWrapper Icon={FaCalendarAlt} /> Appointment Date & Time:</label>
               <DatePicker
                 selected={selectedDate}
                 onChange={(date: Date | null) => date && setSelectedDate(date)}
@@ -228,51 +238,13 @@ const Appointments: React.FC = () => {
             </div>
 
             <div className="form-group">
-              <label>Reason:</label>
+              <label><IconWrapper Icon={FaFileAlt} /> Reason:</label>
               <textarea
                 value={formData.reason}
                 onChange={(e) => setFormData({...formData, reason: e.target.value})}
                 required
                 placeholder="Enter reason for appointment"
               />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="notification-time">Notification Time:</label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <select
-                  id="notification-time"
-                  className="form-control"
-                  value={notificationTime}
-                  onChange={e => {
-                    const val = e.target.value;
-                    if (val === 'custom') setNotificationTime('custom');
-                    else setNotificationTime(Number(val));
-                  }}
-                  style={{ flex: '0 0 200px', padding: '8px', borderRadius: 6, border: '1px solid #e5e7eb', fontSize: '1rem' }}
-                  required
-                >
-                  {NOTIFICATION_OPTIONS.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-                {notificationTime === 'custom' && (
-                  <input
-                    type="number"
-                    min={1}
-                    max={1440}
-                    value={customNotification}
-                    onChange={e => setCustomNotification(Number(e.target.value))}
-                    className="form-control"
-                    style={{ width: 90, padding: '8px', borderRadius: 6, border: '1px solid #e5e7eb', fontSize: '1rem' }}
-                    placeholder="Minutes"
-                    required
-                  />
-                )}
-                <span style={{ color: '#6B7280', fontSize: '0.95rem', marginLeft: 4 }}>
-                  before appointment
-                </span>
-              </div>
             </div>
 
             <div className="form-buttons">
@@ -292,19 +264,26 @@ const Appointments: React.FC = () => {
       )}
 
       <div className="appointments-list">
-        {appointments.length === 0 ? (
-          <p className="no-appointments">No appointments scheduled</p>
+        {isLoading ? (
+          <div className="no-appointments">Loading appointments...</div>
+        ) : appointments.length === 0 ? (
+          <div className="no-appointments">
+            <IconWrapper Icon={FaCalendarAlt} size={32} style={{ marginBottom: '1rem', opacity: 0.5 }} />
+            <p>No appointments scheduled</p>
+            <p style={{ fontSize: '0.9rem', marginTop: '0.5rem', opacity: 0.7 }}>
+              Click "New Appointment" to schedule one
+            </p>
+          </div>
         ) : (
           appointments.map((appointment) => (
             <div key={appointment.id} className="appointment-card">
               <div className="appointment-info">
-                <h3>{appointment.doctor_name}</h3>
+                <h3><IconWrapper Icon={FaHospital} /> {appointment.doctor_name}</h3>
                 <p className="appointment-time">
-                  {new Date(appointment.appointment_time).toLocaleString()}
+                  <IconWrapper Icon={FaClock} /> {formatDate(appointment.appointment_time)}
                 </p>
-                <p className="appointment-reason">{appointment.reason}</p>
-                <p className="appointment-notification">
-                  Reminder: {appointment.notification_minutes_before} minutes before
+                <p className="appointment-reason">
+                  <IconWrapper Icon={FaFileAlt} /> {appointment.reason}
                 </p>
               </div>
               <div className="appointment-actions">
@@ -312,13 +291,13 @@ const Appointments: React.FC = () => {
                   onClick={() => handleEdit(appointment)}
                   className="edit-btn"
                 >
-                  Edit
+                  <IconWrapper Icon={FaEdit} /> Edit
                 </button>
                 <button 
                   onClick={() => appointment.id && handleDelete(appointment.id)}
                   className="delete-btn"
                 >
-                  Delete
+                  <IconWrapper Icon={FaTrash} /> Delete
                 </button>
               </div>
             </div>

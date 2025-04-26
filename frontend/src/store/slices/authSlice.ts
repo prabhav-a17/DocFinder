@@ -1,14 +1,58 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import { User, AuthState } from '../../types';
 import { API_BASE_URL } from '../../config';
 
-const initialState: AuthState = {
-    user: null,
-    token: localStorage.getItem('token'),
-    isAuthenticated: !!localStorage.getItem('token'),
-    loading: false,
-    error: null,
+// Get initial state from localStorage
+const getInitialState = (): AuthState => {
+    const token = localStorage.getItem('token');
+    return {
+        user: null,
+        token: token,
+        isAuthenticated: !!token,
+        loading: false,
+        error: null,
+    };
 };
+
+const initialState: AuthState = getInitialState();
+
+// Create async thunk for session restoration
+export const restoreUserSession = createAsyncThunk(
+    'auth/restoreSession',
+    async (_, { dispatch }) => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            console.log('No token found in localStorage');
+            return null;
+        }
+
+        try {
+            console.log('Attempting to restore session with token:', token);
+            const response = await fetch(`${API_BASE_URL}/auth/me/`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            console.log('Session restore response status:', response.status);
+            
+            if (response.ok) {
+                const user = await response.json();
+                console.log('Successfully restored session for user:', user);
+                return user;
+            } else {
+                console.log('Failed to restore session, clearing token');
+                localStorage.removeItem('token');
+                return null;
+            }
+        } catch (error) {
+            console.error('Error restoring session:', error);
+            return null;
+        }
+    }
+);
 
 const authSlice = createSlice({
     name: 'auth',
@@ -39,51 +83,36 @@ const authSlice = createSlice({
         clearError: (state) => {
             state.error = null;
         },
-        restoreSession: (state, action: PayloadAction<User>) => {
-            state.user = action.payload;
+        setToken: (state, action: PayloadAction<string>) => {
+            state.token = action.payload;
             state.isAuthenticated = true;
-            state.loading = false;
-            state.error = null;
+            localStorage.setItem('token', action.payload);
         },
+    },
+    extraReducers: (builder) => {
+        builder
+            .addCase(restoreUserSession.pending, (state) => {
+                state.loading = true;
+            })
+            .addCase(restoreUserSession.fulfilled, (state, action) => {
+                state.loading = false;
+                if (action.payload) {
+                    state.user = action.payload;
+                    state.isAuthenticated = true;
+                } else {
+                    state.user = null;
+                    state.token = null;
+                    state.isAuthenticated = false;
+                }
+            })
+            .addCase(restoreUserSession.rejected, (state) => {
+                state.loading = false;
+                state.user = null;
+                state.token = null;
+                state.isAuthenticated = false;
+            });
     },
 });
 
-// Thunk to restore user session
-export const restoreUserSession = () => async (dispatch: any) => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-        console.log('No token found in localStorage');
-        return;
-    }
-
-    try {
-        console.log('Attempting to restore session with token:', token);
-        const response = await fetch(`${API_BASE_URL}/auth/me/`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            },
-        });
-
-        console.log('Session restore response status:', response.status);
-        
-        if (response.ok) {
-            const user = await response.json();
-            console.log('Successfully restored session for user:', user);
-            dispatch(restoreSession(user));
-        } else {
-            console.log('Failed to restore session, clearing token');
-            // If the token is invalid, clear it
-            localStorage.removeItem('token');
-            dispatch(logout());
-        }
-    } catch (error) {
-        console.error('Error restoring session:', error);
-        // Don't automatically log out on network errors
-        // Just keep the existing token and let the user try again
-    }
-};
-
-export const { loginStart, loginSuccess, loginFailure, logout, clearError, restoreSession } = authSlice.actions;
+export const { loginStart, loginSuccess, loginFailure, logout, clearError, setToken } = authSlice.actions;
 export default authSlice.reducer; 
