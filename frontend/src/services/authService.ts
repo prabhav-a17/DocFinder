@@ -13,7 +13,7 @@ export interface RegisterData {
     email: string;
     password: string;
     password2: string;
-    phone_number?: string;
+    phone_number: string;
 }
 
 export interface PasswordResetRequest {
@@ -45,9 +45,25 @@ const authService = {
         try {
             const response = await axios.post(`${API_URL}/login/`, credentials);
             const { access, refresh, user } = response.data;
-            return { token: access, refreshToken: refresh, user };
+            return { 
+                user, 
+                token: access, 
+                refreshToken: refresh 
+            };
         } catch (error: any) {
             console.error('Login API error:', error.response?.data || error.message);
+            throw error;
+        }
+    },
+
+    refreshToken: async (refreshToken: string) => {
+        try {
+            const response = await axios.post(`${API_URL}/token/refresh/`, {
+                refresh: refreshToken
+            });
+            return response.data.access;
+        } catch (error: any) {
+            console.error('Token refresh error:', error.response?.data || error.message);
             throw error;
         }
     },

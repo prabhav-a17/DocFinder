@@ -8,7 +8,8 @@ from .views import (
     UserDetailView,
     AppointmentListCreateView,
     AppointmentDetailView,
-    upcoming_appointments
+    upcoming_appointments,
+    UserMeView
 )
 
 urlpatterns = [
@@ -21,4 +22,5 @@ urlpatterns = [
     path('appointments/', AppointmentListCreateView.as_view(), name='appointment-list-create'),
     path('appointments/<int:pk>/', AppointmentDetailView.as_view(), name='appointment-detail'),
     path('upcoming-appointments/', upcoming_appointments, name='upcoming-appointments'),
+    path('me/', UserMeView.as_view(), name='user-me'),
 ] 

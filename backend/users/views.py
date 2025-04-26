@@ -202,4 +202,11 @@ def upcoming_appointments(request):
     ).order_by('appointment_time')[:5]
     
     serializer = AppointmentSerializer(appointments, many=True)
-    return Response(serializer.data) 
+    return Response(serializer.data)
+
+class UserMeView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data) 
