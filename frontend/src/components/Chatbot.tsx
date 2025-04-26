@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaPaperPlane, FaSearch, FaUserMd } from 'react-icons/fa';
+import { FaPaperPlane, FaUserMd } from 'react-icons/fa';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store';
 import { toast } from 'react-toastify';
@@ -12,9 +12,9 @@ interface Message {
   role: 'user' | 'assistant';
 }
 
-const IconWrapper = ({ Icon, ...props }: { Icon: IconType; [key: string]: any }) => {
-  const IconComponent = Icon as React.ComponentType<any>;
-  return <IconComponent {...props} />;
+const IconWrapper: React.FC<{ Icon: IconType }> = ({ Icon }) => {
+  const IconComponent = Icon as React.ComponentType<{ size?: number }>;
+  return <IconComponent size={20} />;
 };
 
 // Mapping of specialist variations to standardized search terms
@@ -57,62 +57,13 @@ const specialistMapping: { [key: string]: string } = {
 const specialistTypes = Object.keys(specialistMapping);
 
 const Chatbot: React.FC = () => {
+  const navigate = useNavigate();
+  const { token } = useSelector((state: RootState) => state.auth);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const messagesEndRef = useRef<null | HTMLDivElement>(null);
-  const navigate = useNavigate();
-  const { token } = useSelector((state: RootState) => state.auth);
-
-  const extractSpecialist = (text: string): string | null => {
-    // First, try to find a direct match in the "Would you like me to find a [specialist] near you?" format
-    const findDoctorMatch = text.match(/Would you like (?:me )?to find (?:an?|the) ([^?]+?) (?:near you|in your area)\??/i);
-    if (findDoctorMatch) {
-      const matchedSpecialist = findDoctorMatch[1].trim();
-      // Check if the matched specialist is in our list
-      const foundSpecialist = specialistTypes.find(type => 
-        type.toLowerCase() === matchedSpecialist.toLowerCase() ||
-        matchedSpecialist.toLowerCase().includes(type.toLowerCase())
-      );
-      if (foundSpecialist) return foundSpecialist;
-    }
-
-    // Then try to find any specialist mention in the text
-    for (const specialist of specialistTypes) {
-      // Create variations of the specialist name
-      const variations = [
-        specialist,
-        specialist.toLowerCase(),
-        specialist.replace('/', ' or '),
-        specialist.replace('/', ' '),
-        specialist.split('/')[0], // Take first part of split specialties
-        specialist.split('(')[0].trim() // Remove parenthetical descriptions
-      ];
-
-      // Check for each variation in the text
-      for (const variation of variations) {
-        if (text.toLowerCase().includes(variation.toLowerCase())) {
-          return specialist;
-        }
-      }
-    }
-
-    // Look for "see a/an [specialist]" pattern
-    const seeSpecialistMatch = text.match(/(?:should |need to |recommend |visit |see )(?:a|an|the) ([^.,!?]+?)(?=\.|,|!|\?|$)/gi);
-    if (seeSpecialistMatch) {
-      for (const match of seeSpecialistMatch) {
-        const potentialSpecialist = match.replace(/(?:should |need to |recommend |visit |see )(?:a|an|the) /i, '').trim();
-        const foundSpecialist = specialistTypes.find(type => 
-          type.toLowerCase() === potentialSpecialist.toLowerCase() ||
-          potentialSpecialist.toLowerCase().includes(type.toLowerCase())
-        );
-        if (foundSpecialist) return foundSpecialist;
-      }
-    }
-
-    return null;
-  };
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -122,21 +73,32 @@ const Chatbot: React.FC = () => {
     scrollToBottom();
   }, [messages]);
 
-  const handleSend = async () => {
-    if (!input.trim()) return;
+  const extractSpecialist = (text: string): string | null => {
+    if (!text) return null;
+    
+    const patterns = [
+      /(?:see|consult|visit|recommend|suggest).*?(?:a|an)?\s*([A-Za-z\s]+)(?:specialist|doctor|physician)/i,
+      /(?:you should|I recommend|I suggest).*?(?:see|consult|visit).*?(?:a|an)?\s*([A-Za-z\s]+)(?:specialist|doctor|physician)/i,
+      /(?:specialist|doctor|physician).*?(?:in|for|of)\s*([A-Za-z\s]+)/i,
+      /(?:[A-Za-z\s]+)(?:specialist|doctor|physician)/i
+    ];
 
-    if (!token) {
-      toast.error('Please log in to use the chatbot');
-      navigate('/login');
-      return;
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (match && match[1]) {
+        return match[1].trim();
+      }
     }
+    return null;
+  };
+
+  const handleSend = async () => {
+    if (!input.trim() || isLoading) return;
 
     const userMessage = input.trim();
     setInput('');
-    setIsLoading(true);
-
-    // Add user message to chat
     setMessages(prev => [...prev, { content: userMessage, role: 'user' }]);
+    setIsLoading(true);
 
     try {
       const response = await fetch('http://localhost:8001/api/chat/', {
@@ -164,12 +126,10 @@ const Chatbot: React.FC = () => {
       const data = await response.json();
       const botMessage = data.response;
       
-      // Save the conversation ID if it's a new conversation
       if (data.conversation_id && !conversationId) {
         setConversationId(data.conversation_id);
       }
 
-      // Add bot message to chat
       setMessages(prev => [...prev, { content: botMessage, role: 'assistant' }]);
     } catch (error) {
       console.error('Error:', error);
@@ -197,8 +157,6 @@ const Chatbot: React.FC = () => {
 
   const renderMessage = (message: Message, index: number) => {
     const specialist = message.role === 'assistant' ? extractSpecialist(message.content) : null;
-    console.log('Message content:', message.content);
-    console.log('Extracted specialist:', specialist);
 
     return (
       <div key={index} className={`message ${message.role}`}>
