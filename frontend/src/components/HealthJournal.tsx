@@ -58,8 +58,15 @@ const HealthJournal: React.FC = () => {
     const handleConfirmDelete = async () => {
         if (logToDelete !== null) {
             try {
-                await healthJournalService.deleteLog(logToDelete);
-                setLogs(logs.filter(log => log.id !== logToDelete));
+                // Check if this is a temporary ID (created with Date.now())
+                if (logToDelete > 1000000000000) {  // Date.now() returns a 13-digit number
+                    // This is an unsaved log, just remove it from the state
+                    setLogs(logs.filter(log => log.id !== logToDelete));
+                } else {
+                    // This is a saved log, delete it from the backend
+                    await healthJournalService.deleteLog(logToDelete);
+                    setLogs(logs.filter(log => log.id !== logToDelete));
+                }
                 setError(null);
             } catch (err) {
                 setError('Failed to delete log. Please try again later.');
