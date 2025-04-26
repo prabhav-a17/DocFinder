@@ -18,6 +18,9 @@ from .serializers import (
     AppointmentSerializer
 )
 from rest_framework.decorators import api_view, permission_classes
+import logging
+
+logger = logging.getLogger(__name__)
 
 class UserRegistrationView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -106,16 +109,20 @@ class PasswordResetRequestView(APIView):
             Best regards,
             The DocFinder Team
             """
-            
-            send_mail(
-                subject=subject,
-                message=text_content,
-                html_message=html_content,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[email],
-                fail_silently=False,
-            )
-            return Response({'message': 'Password reset email sent'})
+            try:
+                send_mail(
+                    subject=subject,
+                    message=text_content,
+                    html_message=html_content,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[email],
+                    fail_silently=False,
+                )
+                logger.info(f"Password reset email sent to {email}")
+                return Response({'message': 'Password reset email sent'})
+            except Exception as e:
+                logger.error(f"Failed to send password reset email to {email}: {str(e)}")
+                return Response({'error': f'Failed to send password reset email: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except User.DoesNotExist:
             return Response(
                 {'error': 'User with this email does not exist'},

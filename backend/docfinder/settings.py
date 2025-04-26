@@ -176,7 +176,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Email Configuration
 EMAIL_BACKEND = 'sendgrid_backend.SendgridBackend'
-SENDGRID_API_KEY = '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'
+SENDGRID_API_KEY = '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'
 DEFAULT_FROM_EMAIL = 'doc.finder.email@gmail.com'
 SENDGRID_SANDBOX_MODE_IN_DEBUG = False
 
