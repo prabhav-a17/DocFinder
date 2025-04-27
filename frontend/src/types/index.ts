@@ -74,6 +74,7 @@ export interface Message {
 export interface AuthState {
     user: User | null;
     token: string | null;
+    refreshToken: string | null;
     isAuthenticated: boolean;
     loading: boolean;
     error: string | null;
