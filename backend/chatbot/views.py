@@ -1,70 +1,110 @@
 from rest_framework import status
-from rest_framework.decorators import api_view, parser_classes
+from rest_framework.decorators import api_view, parser_classes, permission_classes
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.permissions import IsAuthenticated
 from django.conf import settings
 from django.core.files.storage import default_storage
 from openai import OpenAI
 import os
-from .models import ChatMessage
+from .models import ChatMessage, Conversation, Message
 import uuid
 from django.db.models import Max
+from django.contrib.auth import get_user_model
+import json
+import traceback
 
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
 @api_view(['GET'])
-def get_chat_history(request):
-    # Get unique conversation IDs and their latest message timestamp
-    conversations = ChatMessage.objects.values('conversation_id').annotate(
-        last_message=Max('timestamp')
-    ).order_by('-last_message')
-
-    chat_history = []
-    for conv in conversations:
-        messages = ChatMessage.objects.filter(
-            conversation_id=conv['conversation_id']
-        ).order_by('timestamp')
+@permission_classes([IsAuthenticated])
+def get_chat_history(request, conversation_id=None):
+    try:
+        if conversation_id:
+            # Get specific conversation
+            try:
+                conversation = Conversation.objects.get(
+                    id=conversation_id,
+                    user=request.user
+                )
+                messages = conversation.messages.all()
+                chat_data = [{
+                    'id': str(conversation.id),
+                    'title': conversation.summary or messages[0].content[:50] if messages else "New Conversation",
+                    'created_at': conversation.created_at,
+                    'updated_at': conversation.updated_at,
+                    'messages': [
+                        {
+                            'content': msg.content,
+                            'role': 'user' if msg.is_user else 'assistant',
+                            'created_at': msg.created_at
+                        } for msg in messages
+                    ]
+                }]
+            except Conversation.DoesNotExist:
+                return Response({'error': 'Conversation not found'}, status=404)
+        else:
+            # Get all conversations
+            conversations = Conversation.objects.filter(user=request.user)
+            chat_data = []
+            
+            for conv in conversations:
+                messages = conv.messages.all()
+                chat_data.append({
+                    'id': str(conv.id),
+                    'title': conv.summary or messages[0].content[:50] if messages else "New Conversation",
+                    'created_at': conv.created_at,
+                    'updated_at': conv.updated_at,
+                    'messages': [
+                        {
+                            'content': msg.content,
+                            'role': 'user' if msg.is_user else 'assistant',
+                            'created_at': msg.created_at
+                        } for msg in messages
+                    ]
+                })
         
-        if messages:
-            chat_history.append({
-                'conversation_id': conv['conversation_id'],
-                'timestamp': conv['last_message'],
-                'messages': [{
-                    'id': msg.id,
-                    'role': msg.role,
-                    'content': msg.content,
-                    'timestamp': msg.timestamp,
-                    'is_pinned': msg.is_pinned
-                } for msg in messages]
-            })
-
-    return Response(chat_history)
+        return Response(chat_data)
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def chat(request):
     try:
-        # Check if API key is available
-        if not settings.OPENAI_API_KEY:
-            print("OpenAI API key is not set in settings")
-            return Response(
-                {"error": "OpenAI API key is not configured"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        message = request.data.get('message')
+        conversation_id = request.data.get('conversation_id')
+        
+        if not message:
+            return Response({'error': 'Message is required'}, status=400)
+
+        # Get or create conversation
+        if conversation_id:
+            try:
+                conversation = Conversation.objects.get(
+                    id=conversation_id,
+                    user=request.user
+                )
+            except Conversation.DoesNotExist:
+                return Response({'error': 'Invalid conversation ID'}, status=400)
+        else:
+            # Create new conversation
+            conversation = Conversation.objects.create(
+                user=request.user,
+                summary=message[:50] + '...' if len(message) > 50 else message
             )
 
-        # Initialize OpenAI client with fresh API key
-        client = OpenAI(api_key=settings.OPENAI_API_KEY)
-        
-        message = request.data.get('message', '')
-        conversation_id = request.data.get('conversation_id', str(uuid.uuid4()))
+        # Save user message
+        Message.objects.create(
+            conversation=conversation,
+            content=message,
+            is_user=True
+        )
 
-        # Get conversation history
-        previous_messages = ChatMessage.objects.filter(
-            conversation_id=conversation_id
-        ).order_by('timestamp')
-
-        # Build the messages array with system prompt and history
+        # Get previous messages for context
+        previous_messages = conversation.messages.all().order_by('created_at')
         messages = [
-            {"role": "system", "content": """You are DocFinder AI, a medical assistant focused on quickly identifying symptoms and recommending appropriate specialists from our network. Follow these rules:
+            {"role": "system", "content": """You are DocFinder AI, a medical assistant focused on quickly identifying symptoms and recommending appropriate specialists from our network. Follow these rules STRICTLY:
 
 1. BE CONCISE. Keep responses under 3 sentences unless absolutely necessary.
 2. For symptom queries, ONLY recommend from this specific list of specialists:
@@ -92,114 +132,122 @@ def chat(request):
    - Sports Medicine Specialist
    - Emergency Medicine Physician (urgent/emergency care)
 
-3. When recommending:
-   - Briefly explain why that specialist is best suited
+3. When recommending a specialist:
    - ALWAYS end with: "Would you like me to find a [EXACT SPECIALIST NAME] near you?"
    - Use the EXACT specialist names from the list above
+   - Briefly explain why that specialist is best suited
+   - NEVER say you can't help find a specialist
 
 4. DO NOT:
    - Give medical advice or diagnoses
    - Recommend specialists not on this list
    - Use generic terms like "GP" or "doctor"
    - Ask multiple questions
-   - Be overly verbose"""}
+   - Be overly verbose
+   - Say you can't help find a specialist
+   - Suggest searching locally or getting referrals
+
+5. If the user asks to find a specialist or says yes to finding one:
+   - Confirm that you'll help them find the specialist
+   - Use the exact format: "I'll help you find a [SPECIALIST NAME] near you."
+   - Do not provide any other information or suggestions"""}
         ]
 
         # Add conversation history
         for prev_message in previous_messages:
             messages.append({
-                "role": prev_message.role,
+                "role": "user" if prev_message.is_user else "assistant",
                 "content": prev_message.content
             })
 
-        # Add the new user message
+        # Add the current message
         messages.append({"role": "user", "content": message})
 
-        # Save user message
-        user_message = ChatMessage.objects.create(
-            role='user',
-            content=message,
-            conversation_id=conversation_id
+        # Get response from OpenAI
+        response = client.chat.completions.create(
+            model="gpt-4-turbo",
+            messages=messages,
+            max_tokens=300,
         )
 
-        try:
-            # Get response from OpenAI
-            response = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=messages,
-                temperature=0.7,
-                max_tokens=500
-            )
-            
-            bot_response = response.choices[0].message.content
+        assistant_message = response.choices[0].message.content
 
-            # Save bot response
-            bot_message = ChatMessage.objects.create(
-                role='assistant',
-                content=bot_response,
-                conversation_id=conversation_id
-            )
+        # Save assistant's response
+        Message.objects.create(
+            conversation=conversation,
+            content=assistant_message,
+            is_user=False
+        )
 
-            return Response({
-                "response": bot_response,
-                "conversation_id": conversation_id
-            })
+        # Update conversation summary if it's the first message
+        if conversation.messages.count() == 2:  # First user message + first assistant response
+            conversation.summary = f"{message[:30]}... - {assistant_message[:30]}..."
+            conversation.save()
 
-        except Exception as e:
-            print(f"OpenAI API error: {str(e)}")
-            return Response(
-                {"error": "Failed to get response from OpenAI API"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        return Response({
+            'response': assistant_message,
+            'conversation_id': str(conversation.id)
+        })
 
     except Exception as e:
-        print(f"General error in chat view: {str(e)}")
-        return Response(
-            {"error": "An unexpected error occurred"},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        print("CHAT ERROR:", str(e))
+        traceback.print_exc()
+        return Response({'error': str(e)}, status=500)
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def toggle_pin(request, message_id):
     try:
-        message = ChatMessage.objects.get(id=message_id)
-        message.is_pinned = not message.is_pinned
-        message.save()
-        return Response({'is_pinned': message.is_pinned})
-    except ChatMessage.DoesNotExist:
+        message = Message.objects.get(id=message_id)
+        message.conversation.is_pinned = not message.conversation.is_pinned
+        message.conversation.save()
+        return Response({'is_pinned': message.conversation.is_pinned})
+    except Message.DoesNotExist:
         return Response(
             {'error': 'Message not found'},
             status=status.HTTP_404_NOT_FOUND
         )
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def get_pinned_messages(request):
-    pinned_messages = ChatMessage.objects.filter(is_pinned=True).order_by('-timestamp')
+    pinned_conversations = Conversation.objects.filter(
+        user=request.user,
+        is_pinned=True
+    ).order_by('-updated_at')
+    
     return Response([{
-        'id': msg.id,
-        'role': msg.role,
-        'content': msg.content,
-        'timestamp': msg.timestamp,
-        'conversation_id': msg.conversation_id,
-        'is_pinned': msg.is_pinned
-    } for msg in pinned_messages])
+        'id': conv.id,
+        'summary': conv.summary,
+        'created_at': conv.created_at,
+        'updated_at': conv.updated_at,
+        'messages': [{
+            'content': msg.content,
+            'is_user': msg.is_user,
+            'created_at': msg.created_at
+        } for msg in conv.messages.all()]
+    } for conv in pinned_conversations])
 
 @api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
 def delete_chat_history(request, conversation_id=None):
     try:
         if conversation_id:
             # Delete specific conversation
-            ChatMessage.objects.filter(conversation_id=conversation_id).delete()
+            Conversation.objects.filter(
+                id=conversation_id,
+                user=request.user
+            ).delete()
             return Response({'message': f'Conversation {conversation_id} deleted successfully'})
         else:
             # Delete all conversations
-            ChatMessage.objects.all().delete()
+            Conversation.objects.filter(user=request.user).delete()
             return Response({'message': 'All chat history deleted successfully'})
     except Exception as e:
         return Response(
             {'error': str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        ) 
+        )
 
 from PIL import Image
 import base64
@@ -207,6 +255,7 @@ from io import BytesIO
 
 @api_view(['POST'])
 @parser_classes([MultiPartParser, FormParser])
+@permission_classes([IsAuthenticated])
 def upload_image(request):
     image = request.FILES.get('image')
 
@@ -224,7 +273,7 @@ def upload_image(request):
         data_url = f"data:image/jpeg;base64,{img_str}"
 
         response = client.chat.completions.create(
-            model="gpt-4-turbo",
+            model="gpt-4-vision-preview",
             messages=[
                 {
                     "role": "user",

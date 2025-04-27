@@ -2,7 +2,7 @@
 URL configuration for docfinder project.
 
 The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/5.1/topics/http/urls/
+    https://docs.djangoproject.com/en/5.2/topics/http/urls/
 Examples:
 Function views
     1. Add an import:  from my_app import views
@@ -23,8 +23,8 @@ from django.views.generic import TemplateView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/auth/', include('users.urls')),
-    path('api/', include('chatbot.urls')),  # Add chatbot URLs
+    path('api/', include('chatbot.urls')),  # Include chat URLs under /api/
+    path('api/auth/', include('users.urls')),  # Include user URLs under /api/auth/
     path('api/health-journal/', include('health_journal.urls')),
     path('api/clinic-finder/', include('clinic_finder.urls')),
     path('', TemplateView.as_view(template_name='index.html')),  # Serve React app

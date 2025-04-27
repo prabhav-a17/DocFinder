@@ -35,3 +35,22 @@ class Appointment(models.Model):
 
     def __str__(self):
         return f"{self.user.username}'s appointment with {self.doctor_name} at {self.appointment_time}"
+
+class ChatHistory(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='chat_history')
+    conversation_id = models.UUIDField(unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    title = models.CharField(max_length=255, blank=True)  # Optional title for the conversation
+
+    class Meta:
+        ordering = ['-updated_at']
+
+class ChatMessage(models.Model):
+    chat_history = models.ForeignKey(ChatHistory, on_delete=models.CASCADE, related_name='messages')
+    content = models.TextField()
+    role = models.CharField(max_length=10)  # 'user' or 'assistant'
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
