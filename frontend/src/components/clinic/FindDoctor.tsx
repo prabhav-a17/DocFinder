@@ -324,8 +324,8 @@ const FindDoctor: React.FC = () => {
         if (!doctor.opening_hours?.periods) return true;
         
         const dayPeriods = doctor.opening_hours.periods.filter(
-          period => period.open.day === filters.dayOfWeek
-        );
+            period => period.open.day === filters.dayOfWeek
+          );
 
         return filters.selectedHours.some(selectedTime => {
           const selectedTimeNum = parseInt(selectedTime.replace(':', ''));
@@ -508,30 +508,30 @@ const FindDoctor: React.FC = () => {
       } else {
         setError('Geolocation is not supported by your browser');
         setIsLoading(false);
-      }
+    }
     } else if (selectedPlace) {
-      try {
+    try {
         const res = await axios.post(
-          `${API_BASE_URL}/clinic-finder/find-doctor/`,
-          {
+        `${API_BASE_URL}/clinic-finder/find-doctor/`,
+        {
             query: searchSpecialty,
-            location: {
-              lat: selectedPlace.lat,
-              lng: selectedPlace.lng
-            }
-          },
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
+          location: {
+            lat: selectedPlace.lat,
+            lng: selectedPlace.lng
           }
-        );
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
         handleSearchResults(res.data);
       } catch (err) {
         handleSearchError(err);
       }
-    } else {
+      } else {
       setError('Please enter a location or use your current location');
       setIsLoading(false);
     }

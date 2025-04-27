@@ -36,49 +36,49 @@ const AppContent: React.FC = () => {
     }, [dispatch]);
 
     return (
-        <Router>
-            <div className="app">
-                <Navigation />
-                <ToastContainer
-                    position="top-right"
-                    autoClose={5000}
-                    hideProgressBar={false}
-                    newestOnTop
-                    closeOnClick
-                    rtl={false}
-                    pauseOnFocusLoss
-                    draggable
-                    pauseOnHover
-                    theme="light"
-                />
-                <main className="page-container">
-                    <Routes>
-                        <Route path="/" element={<HomePage />} />
-                        <Route path="/login" element={<Login />} />
-                        <Route path="/register" element={<Register />} />
-                        <Route path="/forgot-password" element={<ForgotPassword />} />
-                        <Route path="/reset-password/:token" element={<ResetPassword />} />
-                        <Route path="/dashboard" element={
-                            <PrivateRoute>
-                                <Dashboard />
-                            </PrivateRoute>
-                        } />
-                        <Route path="/chatbot" element={
-                            <PrivateRoute>
-                                <Chatbot />
-                            </PrivateRoute>
-                        } />
-                        <Route path="/find-doctor" element={<FindDoctor />} />
-                        <Route path="/find-doctor/:specialist" element={<FindDoctor />} />
-                        <Route path="/appointments" element={
-                            <PrivateRoute>
-                                <Appointments />
-                            </PrivateRoute>
-                        } />
-                    </Routes>
-                </main>
-            </div>
-        </Router>
+                <Router>
+                    <div className="app">
+                        <Navigation />
+                        <ToastContainer
+                            position="top-right"
+                            autoClose={5000}
+                            hideProgressBar={false}
+                            newestOnTop
+                            closeOnClick
+                            rtl={false}
+                            pauseOnFocusLoss
+                            draggable
+                            pauseOnHover
+                            theme="light"
+                        />
+                        <main className="page-container">
+                            <Routes>
+                                <Route path="/" element={<HomePage />} />
+                                <Route path="/login" element={<Login />} />
+                                <Route path="/register" element={<Register />} />
+                                <Route path="/forgot-password" element={<ForgotPassword />} />
+                                <Route path="/reset-password/:token" element={<ResetPassword />} />
+                                <Route path="/dashboard" element={
+                                    <PrivateRoute>
+                                        <Dashboard />
+                                    </PrivateRoute>
+                                } />
+                                <Route path="/chatbot" element={
+                                    <PrivateRoute>
+                                        <Chatbot />
+                                    </PrivateRoute>
+                                } />
+                                <Route path="/find-doctor" element={<FindDoctor />} />
+                                <Route path="/find-doctor/:specialist" element={<FindDoctor />} />
+                                <Route path="/appointments" element={
+                                    <PrivateRoute>
+                                        <Appointments />
+                                    </PrivateRoute>
+                                } />
+                            </Routes>
+                        </main>
+                    </div>
+                </Router>
     );
 };
 
