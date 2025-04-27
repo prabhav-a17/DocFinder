@@ -76,6 +76,13 @@ const Chatbot: React.FC = () => {
   const extractSpecialist = (text: string): string | null => {
     if (!text) return null;
     
+    // First try to find exact matches from our specialist types
+    const exactMatch = specialistTypes.find(type => 
+      text.toLowerCase().includes(type.toLowerCase())
+    );
+    if (exactMatch) return exactMatch;
+    
+    // If no exact match, try patterns
     const patterns = [
       /(?:see|consult|visit|recommend|suggest).*?(?:a|an)?\s*([A-Za-z\s]+)(?:specialist|doctor|physician)/i,
       /(?:you should|I recommend|I suggest).*?(?:see|consult|visit).*?(?:a|an)?\s*([A-Za-z\s]+)(?:specialist|doctor|physician)/i,
@@ -86,7 +93,13 @@ const Chatbot: React.FC = () => {
     for (const pattern of patterns) {
       const match = text.match(pattern);
       if (match && match[1]) {
-        return match[1].trim();
+        const foundSpecialist = match[1].trim();
+        // Try to find a matching specialist from our list
+        const matchingSpecialist = specialistTypes.find(type => 
+          type.toLowerCase().includes(foundSpecialist.toLowerCase()) ||
+          foundSpecialist.toLowerCase().includes(type.toLowerCase())
+        );
+        if (matchingSpecialist) return matchingSpecialist;
       }
     }
     return null;

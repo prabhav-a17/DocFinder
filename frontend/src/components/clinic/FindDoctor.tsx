@@ -61,7 +61,7 @@ const specialistDisplayNames: { [key: string]: string } = {
   "OBGYN": "Obstetrician/Gynecologist",
   "Oncology": "Oncologist",
   "Ophthalmology": "Ophthalmologist",
-  "Orthopedics": "Orthopedist",
+  "Orthopedist": "Orthopedist",
   "otolaryngologist-(ent)": "Otolaryngologist (ENT)",
   "Pediatrics": "Pediatrician",
   "Psychiatry": "Psychiatrist",
@@ -142,6 +142,16 @@ const timeSlots = [
   { value: "18:00", label: "6:00 PM" }
 ];
 
+const encodeSpecialistForUrl = (specialist: string): string => {
+  return specialist.toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')  // Replace any non-alphanumeric characters with hyphens
+    .replace(/^-+|-+$/g, '');     // Remove leading/trailing hyphens
+};
+
+const decodeSpecialistFromUrl = (encoded: string): string => {
+  return specialistDisplayNames[encoded] || encoded;
+};
+
 const FindDoctor: React.FC = () => {
   const token = localStorage.getItem('token');
   const { specialist } = useParams<{ specialist?: string }>();
@@ -179,7 +189,7 @@ const FindDoctor: React.FC = () => {
 
   useEffect(() => {
     if (specialist) {
-      const displayName = specialistDisplayNames[specialist] || specialist;
+      const displayName = decodeSpecialistFromUrl(specialist);
       setSelectedSpecialty(displayName);
       // Only trigger search if we have a location
       if (selectedPlace || usingLocation) {
@@ -533,7 +543,7 @@ const FindDoctor: React.FC = () => {
   };
 
   const handleSpecialistChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newSpecialist = e.target.value.toLowerCase().replace(/ /g, '-');
+    const newSpecialist = encodeSpecialistForUrl(e.target.value);
     navigate(`/find-doctor/${newSpecialist}`);
   };
 
@@ -582,14 +592,14 @@ const FindDoctor: React.FC = () => {
         <h1>Find a</h1>
         <div className="specialist-select-container">
           <select 
-            value={selectedSpecialty.toLowerCase().replace(/ /g, '-')} 
+            value={encodeSpecialistForUrl(selectedSpecialty)} 
             onChange={handleSpecialistChange}
             aria-label="Select specialist type"
           >
             {specialistTypes.map(type => (
               <option 
                 key={type} 
-                value={type.toLowerCase().replace(/ /g, '-')}
+                value={encodeSpecialistForUrl(type)}
               >
                 {type}
               </option>
