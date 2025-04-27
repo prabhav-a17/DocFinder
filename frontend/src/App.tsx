@@ -7,7 +7,6 @@ import { theme } from './styles/theme';
 import GlobalStyles from './styles/GlobalStyles';
 import Navigation from './components/Navigation';
 import HomePage from './components/HomePage';
-import Dashboard from './components/Dashboard';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 import ForgotPassword from './components/auth/ForgotPassword';
@@ -20,6 +19,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from './store';
 import { restoreUserSession } from './store/slices/authSlice';
+import HealthJournal from './components/HealthJournal';
 
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { isAuthenticated } = useSelector((state: RootState) => state.auth);
@@ -58,14 +58,14 @@ const AppContent: React.FC = () => {
                                 <Route path="/register" element={<Register />} />
                                 <Route path="/forgot-password" element={<ForgotPassword />} />
                                 <Route path="/reset-password/:token" element={<ResetPassword />} />
-                                <Route path="/dashboard" element={
-                                    <PrivateRoute>
-                                        <Dashboard />
-                                    </PrivateRoute>
-                                } />
                                 <Route path="/chatbot" element={
                                     <PrivateRoute>
                                         <Chatbot />
+                                    </PrivateRoute>
+                                } />
+                                <Route path="/health-journal" element={
+                                    <PrivateRoute>
+                                        <HealthJournal />
                                     </PrivateRoute>
                                 } />
                                 <Route path="/find-doctor" element={<FindDoctor />} />

@@ -3,7 +3,7 @@ import { Box, Typography, Button, Container, Paper } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store';
-import DashboardIcon from '@mui/icons-material/Dashboard';
+import SearchIcon from '@mui/icons-material/Search';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 
 const HomePage: React.FC = () => {
@@ -70,8 +70,8 @@ const HomePage: React.FC = () => {
                                     <Button
                                         variant="contained"
                                         size="large"
-                                        startIcon={<DashboardIcon />}
-                                        onClick={() => navigate('/dashboard')}
+                                        startIcon={<SearchIcon />}
+                                        onClick={() => navigate('/find-doctor')}
                                         sx={{
                                             px: 4,
                                             py: 1.5,
@@ -88,7 +88,7 @@ const HomePage: React.FC = () => {
                                             }
                                         }}
                                     >
-                                        Dashboard
+                                        Find Doctor
                                     </Button>
                                     <Button
                                         variant="outlined"
