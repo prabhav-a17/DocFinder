@@ -26,7 +26,7 @@ const Login: React.FC = () => {
                 token: response.token,
                 refreshToken: response.refreshToken
             }));
-            navigate('/dashboard');
+            navigate('/appointments');
         } catch (err: any) {
             const errorMessage = err.response?.data?.error || 'Login failed';
             setError(errorMessage);

@@ -30,7 +30,7 @@ const Login: React.FC = () => {
         // Use the new setToken action
         dispatch(setToken(data.access));
         toast.success('Login successful!');
-        navigate('/');
+        navigate('/appointments');
       } else {
         toast.error(data.detail || 'Login failed');
       }
