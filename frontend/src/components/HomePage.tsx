@@ -1,127 +1,182 @@
 import React from 'react';
 import { Box, Typography, Button, Container, Paper } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { RootState } from '../store';
+import SearchIcon from '@mui/icons-material/Search';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 
 const HomePage: React.FC = () => {
     const navigate = useNavigate();
+    const { isAuthenticated } = useSelector((state: RootState) => state.auth);
 
     return (
         <Box sx={{ 
             minHeight: '100vh',
             display: 'flex',
             flexDirection: 'column',
-            background: 'linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%)',
-            color: 'white'
+            backgroundColor: '#FFFFFF',
+            color: '#1A1A1A'
         }}>
             {/* Hero Section */}
             <Box sx={{
-                py: { xs: 8, md: 12 },
+                py: { xs: 10, md: 14 },
                 px: { xs: 2, md: 4 },
-                background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)',
+                background: 'linear-gradient(135deg, #f0f8ff 0%, #e6f2ff 100%)',
                 position: 'relative',
                 overflow: 'hidden',
-                '&::before': {
-                    content: '""',
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    background: 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.05) 0%, transparent 50%)',
-                    opacity: 0.5
-                }
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textAlign: 'center'
             }}>
-                <Container maxWidth="lg">
+                <Container maxWidth="md">
                     <Box sx={{
-                        display: 'grid',
-                        gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
-                        gap: 4,
-                        alignItems: 'center'
+                        backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                        backdropFilter: 'blur(10px)',
+                        borderRadius: 4,
+                        p: { xs: 4, md: 6 },
+                        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)',
+                        animation: 'fadeIn 0.5s ease-out'
                     }}>
-                        <Box>
-                            <Typography variant="h2" component="h1" sx={{
-                                fontWeight: 700,
-                                mb: 2,
-                                fontSize: { xs: '2.5rem', md: '3.5rem' },
-                                background: 'linear-gradient(135deg, #ffffff 0%, #a0a0a0 100%)',
-                                WebkitBackgroundClip: 'text',
-                                WebkitTextFillColor: 'transparent'
-                            }}>
-                                Find the Right Doctor for You
-                            </Typography>
-                            <Typography variant="h5" sx={{ 
-                                mb: 4, 
-                                opacity: 0.8,
-                                color: '#e0e0e0'
-                            }}>
-                                Connect with healthcare providers based on your symptoms and needs
-                            </Typography>
-                            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                                <Button
-                                    variant="contained"
-                                    size="large"
-                                    onClick={() => navigate('/register')}
-                                    sx={{
-                                        px: 4,
-                                        py: 1.5,
-                                        borderRadius: 2,
-                                        textTransform: 'none',
-                                        fontSize: '1.1rem',
-                                        background: 'linear-gradient(135deg, #3a7bd5 0%, #00d2ff 100%)',
-                                        '&:hover': {
-                                            background: 'linear-gradient(135deg, #2d5fa3 0%, #00b8e6 100%)'
-                                        }
-                                    }}
-                                >
-                                    Get Started
-                                </Button>
-                                <Button
-                                    variant="outlined"
-                                    size="large"
-                                    onClick={() => navigate('/login')}
-                                    sx={{
-                                        px: 4,
-                                        py: 1.5,
-                                        borderRadius: 2,
-                                        textTransform: 'none',
-                                        fontSize: '1.1rem',
-                                        borderColor: 'rgba(255,255,255,0.2)',
-                                        color: 'white',
-                                        '&:hover': {
-                                            borderColor: 'rgba(255,255,255,0.4)',
-                                            background: 'rgba(255,255,255,0.05)'
-                                        }
-                                    }}
-                                >
-                                    Sign In
-                                </Button>
-                            </Box>
-                        </Box>
-                        <Box sx={{ display: { xs: 'none', md: 'block' } }}>
-                            <Box
-                                component="img"
-                                src="/doctor-illustration.svg"
-                                alt="Doctor illustration"
-                                sx={{
-                                    width: '100%',
-                                    maxWidth: '500px',
-                                    filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))'
-                                }}
-                            />
+                        <Typography variant="h1" component="h1" sx={{
+                            fontWeight: 800,
+                            mb: 3,
+                            fontSize: { xs: '2.5rem', md: '3.5rem' },
+                            color: '#000000',
+                            lineHeight: 1.2,
+                            letterSpacing: '-0.02em'
+                        }}>
+                            Find the Right Doctor for You
+                        </Typography>
+                        <Typography variant="h5" sx={{ 
+                            mb: 4, 
+                            color: '#000000',
+                            fontWeight: 400,
+                            maxWidth: '600px',
+                            mx: 'auto',
+                            lineHeight: 1.6
+                        }}>
+                            Connect with healthcare providers based on your symptoms and needs
+                        </Typography>
+                        <Box sx={{ 
+                            display: 'flex', 
+                            gap: 2, 
+                            justifyContent: 'center',
+                            flexWrap: 'wrap' 
+                        }}>
+                            {isAuthenticated ? (
+                                <>
+                                    <Button
+                                        variant="contained"
+                                        size="large"
+                                        startIcon={<SearchIcon />}
+                                        onClick={() => navigate('/find-doctor')}
+                                        sx={{
+                                            px: 4,
+                                            py: 1.5,
+                                            borderRadius: 2,
+                                            textTransform: 'none',
+                                            fontSize: '1.1rem',
+                                            background: 'linear-gradient(45deg, #007ACC 30%, #0099FF 90%)',
+                                            boxShadow: '0 4px 12px rgba(0, 122, 204, 0.3)',
+                                            transition: 'all 0.3s ease',
+                                            '&:hover': {
+                                                transform: 'translateY(-2px)',
+                                                boxShadow: '0 6px 16px rgba(0, 122, 204, 0.4)',
+                                                background: 'linear-gradient(45deg, #0066CC 30%, #007ACC 90%)'
+                                            }
+                                        }}
+                                    >
+                                        Find Doctor
+                                    </Button>
+                                    <Button
+                                        variant="outlined"
+                                        size="large"
+                                        startIcon={<CalendarMonthIcon />}
+                                        onClick={() => navigate('/appointments')}
+                                        sx={{
+                                            px: 4,
+                                            py: 1.5,
+                                            borderRadius: 2,
+                                            textTransform: 'none',
+                                            fontSize: '1.1rem',
+                                            borderColor: '#007ACC',
+                                            borderWidth: 2,
+                                            color: '#007ACC',
+                                            transition: 'all 0.3s ease',
+                                            '&:hover': {
+                                                borderColor: '#005c99',
+                                                backgroundColor: 'rgba(0, 122, 204, 0.04)',
+                                                transform: 'translateY(-2px)'
+                                            }
+                                        }}
+                                    >
+                                        Appointments
+                                    </Button>
+                                </>
+                            ) : (
+                                <>
+                                    <Button
+                                        variant="contained"
+                                        size="large"
+                                        onClick={() => navigate('/register')}
+                                        sx={{
+                                            px: 4,
+                                            py: 1.5,
+                                            borderRadius: 2,
+                                            textTransform: 'none',
+                                            fontSize: '1.1rem',
+                                            background: 'linear-gradient(45deg, #007ACC 30%, #0099FF 90%)',
+                                            boxShadow: '0 4px 12px rgba(0, 122, 204, 0.3)',
+                                            transition: 'all 0.3s ease',
+                                            '&:hover': {
+                                                transform: 'translateY(-2px)',
+                                                boxShadow: '0 6px 16px rgba(0, 122, 204, 0.4)',
+                                                background: 'linear-gradient(45deg, #0066CC 30%, #007ACC 90%)'
+                                            }
+                                        }}
+                                    >
+                                        Get Started
+                                    </Button>
+                                    <Button
+                                        variant="outlined"
+                                        size="large"
+                                        onClick={() => navigate('/login')}
+                                        sx={{
+                                            px: 4,
+                                            py: 1.5,
+                                            borderRadius: 2,
+                                            textTransform: 'none',
+                                            fontSize: '1.1rem',
+                                            borderColor: '#007ACC',
+                                            borderWidth: 2,
+                                            color: '#007ACC',
+                                            transition: 'all 0.3s ease',
+                                            '&:hover': {
+                                                borderColor: '#005c99',
+                                                backgroundColor: 'rgba(0, 122, 204, 0.04)',
+                                                transform: 'translateY(-2px)'
+                                            }
+                                        }}
+                                    >
+                                        Sign In
+                                    </Button>
+                                </>
+                            )}
                         </Box>
                     </Box>
                 </Container>
             </Box>
 
             {/* Features Section */}
-            <Container maxWidth="lg" sx={{ py: 8, px: { xs: 2, md: 4 } }}>
-                <Typography variant="h3" component="h2" align="center" sx={{
-                    fontWeight: 700,
-                    mb: 6,
+            <Container maxWidth="lg" sx={{ py: 10, px: { xs: 2, md: 4 } }}>
+                <Typography variant="h2" component="h2" align="center" sx={{
+                    fontWeight: 800,
+                    mb: 8,
                     fontSize: { xs: '2rem', md: '2.5rem' },
-                    background: 'linear-gradient(135deg, #ffffff 0%, #a0a0a0 100%)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent'
+                    color: '#000000',
+                    letterSpacing: '-0.02em'
                 }}>
                     How DocFinder Works
                 </Typography>
@@ -134,17 +189,17 @@ const HomePage: React.FC = () => {
                         {
                             title: 'Symptom Analysis',
                             description: 'Describe your symptoms and get personalized doctor recommendations',
-                            gradient: 'linear-gradient(135deg, #2c3e50 0%, #3498db 100%)'
+                            icon: '🔍'
                         },
                         {
                             title: 'Doctor Search',
                             description: 'Find doctors and clinics near you with verified reviews and ratings',
-                            gradient: 'linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)'
+                            icon: '👨‍⚕️'
                         },
                         {
                             title: 'Health Journal',
                             description: 'Track your health history and doctor visits in one place',
-                            gradient: 'linear-gradient(135deg, #0f2027 0%, #203a43 100%)'
+                            icon: '📝'
                         }
                     ].map((feature, index) => (
                         <Paper
@@ -157,25 +212,32 @@ const HomePage: React.FC = () => {
                                 flexDirection: 'column',
                                 alignItems: 'center',
                                 textAlign: 'center',
-                                borderRadius: 2,
-                                background: feature.gradient,
-                                transition: 'transform 0.3s, box-shadow 0.3s',
+                                borderRadius: 3,
+                                backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                                backdropFilter: 'blur(10px)',
+                                border: '1px solid rgba(230, 242, 255, 0.5)',
+                                transition: 'all 0.3s ease',
                                 '&:hover': {
                                     transform: 'translateY(-5px)',
-                                    boxShadow: '0 10px 20px rgba(0,0,0,0.2)'
+                                    boxShadow: '0 12px 24px rgba(0, 0, 0, 0.06)',
+                                    borderColor: '#007ACC'
                                 }
                             }}
                         >
+                            <Typography variant="h4" sx={{ mb: 2 }}>
+                                {feature.icon}
+                            </Typography>
                             <Typography variant="h5" sx={{ 
                                 mb: 2, 
                                 fontWeight: 600,
-                                color: 'white'
+                                color: '#000000'
                             }}>
                                 {feature.title}
                             </Typography>
                             <Typography sx={{ 
-                                color: 'rgba(255,255,255,0.8)',
-                                fontSize: '1.1rem'
+                                color: '#000000',
+                                fontSize: '1.1rem',
+                                lineHeight: 1.6
                             }}>
                                 {feature.description}
                             </Typography>
@@ -186,127 +248,60 @@ const HomePage: React.FC = () => {
 
             {/* Chatbot Section */}
             <Box sx={{
-                py: 8,
+                py: 10,
                 px: { xs: 2, md: 4 },
-                background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)',
+                background: 'linear-gradient(135deg, #f0f8ff 0%, #e6f2ff 100%)',
                 position: 'relative',
-                '&::before': {
-                    content: '""',
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    background: 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.05) 0%, transparent 50%)',
-                    opacity: 0.5
-                }
+                textAlign: 'center'
             }}>
-                <Container maxWidth="lg">
+                <Container maxWidth="md">
                     <Box sx={{
-                        display: 'grid',
-                        gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
-                        gap: 4,
-                        alignItems: 'center'
+                        backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                        backdropFilter: 'blur(10px)',
+                        borderRadius: 4,
+                        p: { xs: 4, md: 6 },
+                        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)'
                     }}>
-                        <Box>
-                            <Typography variant="h3" component="h2" sx={{
-                                fontWeight: 700,
-                                mb: 2,
-                                fontSize: { xs: '2rem', md: '2.5rem' },
-                                background: 'linear-gradient(135deg, #ffffff 0%, #a0a0a0 100%)',
-                                WebkitBackgroundClip: 'text',
-                                WebkitTextFillColor: 'transparent'
-                            }}>
-                                Try Our AI Chatbot
-                            </Typography>
-                            <Typography variant="h5" sx={{ 
-                                mb: 4, 
-                                opacity: 0.8,
-                                color: '#e0e0e0'
-                            }}>
-                                Get instant medical advice and doctor recommendations based on your symptoms
-                            </Typography>
-                            <Button
-                                variant="contained"
-                                size="large"
-                                onClick={() => navigate('/chatbot')}
-                                sx={{
-                                    px: 4,
-                                    py: 1.5,
-                                    borderRadius: 2,
-                                    textTransform: 'none',
-                                    fontSize: '1.1rem',
-                                    background: 'linear-gradient(135deg, #3a7bd5 0%, #00d2ff 100%)',
-                                    '&:hover': {
-                                        background: 'linear-gradient(135deg, #2d5fa3 0%, #00b8e6 100%)'
-                                    }
-                                }}
-                            >
-                                Start Chat
-                            </Button>
-                        </Box>
-                        <Box sx={{ display: { xs: 'none', md: 'block' } }}>
-                            <Box
-                                component="img"
-                                src="/chatbot-illustration.svg"
-                                alt="Chatbot illustration"
-                                sx={{
-                                    width: '100%',
-                                    maxWidth: '500px',
-                                    filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))'
-                                }}
-                            />
-                        </Box>
-                    </Box>
-                </Container>
-            </Box>
-
-            {/* Call to Action */}
-            <Box sx={{
-                py: 8,
-                px: { xs: 2, md: 4 },
-                background: 'linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%)'
-            }}>
-                <Container maxWidth="lg">
-                    <Box sx={{
-                        textAlign: 'center',
-                        maxWidth: '800px',
-                        mx: 'auto'
-                    }}>
-                        <Typography variant="h3" component="h2" sx={{
-                            fontWeight: 700,
-                            mb: 2,
+                        <Typography variant="h2" component="h2" sx={{
+                            fontWeight: 800,
+                            mb: 3,
                             fontSize: { xs: '2rem', md: '2.5rem' },
-                            background: 'linear-gradient(135deg, #ffffff 0%, #a0a0a0 100%)',
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent'
+                            color: '#000000',
+                            letterSpacing: '-0.02em'
                         }}>
-                            Ready to Find Your Doctor?
+                            Try Our AI Chatbot
                         </Typography>
                         <Typography variant="h5" sx={{ 
                             mb: 4, 
-                            opacity: 0.8,
-                            color: '#e0e0e0'
+                            color: '#000000',
+                            fontWeight: 400,
+                            maxWidth: '600px',
+                            mx: 'auto',
+                            lineHeight: 1.6
                         }}>
-                            Join thousands of users who have found the right healthcare provider through DocFinder
+                            Get instant medical advice and doctor recommendations based on your symptoms
                         </Typography>
                         <Button
                             variant="contained"
                             size="large"
-                            onClick={() => navigate('/register')}
+                            onClick={() => navigate('/chatbot')}
                             sx={{
-                                px: 6,
+                                px: 4,
                                 py: 1.5,
                                 borderRadius: 2,
                                 textTransform: 'none',
                                 fontSize: '1.1rem',
-                                background: 'linear-gradient(135deg, #3a7bd5 0%, #00d2ff 100%)',
+                                background: 'linear-gradient(45deg, #007ACC 30%, #0099FF 90%)',
+                                boxShadow: '0 4px 12px rgba(0, 122, 204, 0.3)',
+                                transition: 'all 0.3s ease',
                                 '&:hover': {
-                                    background: 'linear-gradient(135deg, #2d5fa3 0%, #00b8e6 100%)'
+                                    transform: 'translateY(-2px)',
+                                    boxShadow: '0 6px 16px rgba(0, 122, 204, 0.4)',
+                                    background: 'linear-gradient(45deg, #0066CC 30%, #007ACC 90%)'
                                 }
                             }}
                         >
-                            Create Your Account
+                            Start Chat
                         </Button>
                     </Box>
                 </Container>

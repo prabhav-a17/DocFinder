@@ -1,0 +1,150 @@
+.chat-history {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+  background: #ffffff;
+  color: #333333;
+}
+
+.chat-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 8px 8px 16px 8px;
+}
+
+.chat-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.section-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #666666;
+  margin: 8px 0 0 12px;
+  padding: 0;
+}
+
+.chat-summary {
+  display: flex;
+  padding: 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  border: 1px solid #f0f0f0;
+  background: #ffffff;
+}
+
+.chat-summary:hover {
+  background: #f8f9fa;
+}
+
+.chat-summary.pinned {
+  background: #fff9ec;
+  border: 1px solid #ffe4b3;
+}
+
+.chat-summary.pinned:hover {
+  background: #fff5e0;
+}
+
+.chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #eee;
+}
+
+.chat-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+}
+
+.chat-header h4 {
+  margin: 0;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.pin-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-size: 1rem;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+  color: #ff6b6b;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.pin-button:hover {
+  opacity: 1;
+}
+
+.pin-button.pinned {
+  opacity: 1;
+}
+
+.chat-title {
+  font-size: 0.875rem;
+  color: #333333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.4;
+}
+
+.chat-content {
+  padding: 0 4px;
+}
+
+.message-line {
+  color: #666;
+  font-size: 0.95rem;
+  margin: 0;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  padding-left: 4px;
+}
+
+.timestamp {
+  color: #666;
+  font-size: 0.9rem;
+  margin-left: auto;
+}
+
+.loading {
+  text-align: center;
+  color: #6e6e80;
+  font-size: 0.875rem;
+  padding: 20px;
+}
+
+.error {
+  color: #dc3545;
+  text-align: center;
+  font-size: 0.875rem;
+  padding: 20px;
+}
+
+.no-conversations {
+  color: #666666;
+  text-align: center;
+  padding: 24px;
+  font-size: 0.875rem;
+} 

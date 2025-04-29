@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store';
 import { logout } from '../store/slices/authSlice';
-import DashboardIcon from '@mui/icons-material/Dashboard';
+import ChatIcon from '@mui/icons-material/Chat';
+import HealthAndSafetyIcon from '@mui/icons-material/HealthAndSafety';
 import SearchIcon from '@mui/icons-material/Search';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import { toast } from 'react-toastify';
@@ -42,10 +43,17 @@ const Navigation: React.FC = () => {
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <Button
                         color="inherit"
-                        onClick={() => handleProtectedRoute('/dashboard')}
-                        startIcon={<DashboardIcon />}
+                        onClick={() => handleProtectedRoute('/chatbot')}
+                        startIcon={<ChatIcon />}
                     >
-                        Dashboard
+                        Chatbot
+                    </Button>
+                    <Button
+                        color="inherit"
+                        onClick={() => handleProtectedRoute('/health-journal')}
+                        startIcon={<HealthAndSafetyIcon />}
+                    >
+                        Health Journal
                     </Button>
                     <Button
                         color="inherit"
@@ -84,20 +92,9 @@ const Navigation: React.FC = () => {
                             </Box>
                         </>
                     ) : (
-                        <>
-                            <Button
-                                color="inherit"
-                                onClick={() => navigate('/login')}
-                            >
-                                Login
-                            </Button>
-                            <Button
-                                color="inherit"
-                                onClick={() => navigate('/register')}
-                            >
-                                Register
-                            </Button>
-                        </>
+                        <Button color="inherit" onClick={() => navigate('/login')}>
+                            Login
+                        </Button>
                     )}
                 </Box>
             </Toolbar>

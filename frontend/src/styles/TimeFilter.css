@@ -1,0 +1,214 @@
+.time-filter {
+  position: relative;
+  display: inline-block;
+  margin-bottom: 16px;
+}
+
+.filter-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #495057;
+  transition: all 0.2s ease;
+  width: 100%;
+  justify-content: space-between;
+}
+
+.filter-button:hover {
+  background-color: #e9ecef;
+}
+
+.filter-icon {
+  font-size: 16px;
+}
+
+.filter-badge {
+  background-color: #007bff;
+  color: white;
+  border-radius: 50%;
+  padding: 2px 6px;
+  font-size: 12px;
+  margin-left: 4px;
+}
+
+.filter-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: white;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 16px;
+  margin-top: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  width: 100%;
+}
+
+.filter-table {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.filter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.filter-header h4 {
+  margin: 0;
+  font-size: 16px;
+  color: #495057;
+}
+
+.remove-filter-btn {
+  padding: 4px 8px;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.remove-filter-btn:hover {
+  background-color: #c82333;
+}
+
+.filter-section {
+  margin-bottom: 16px;
+}
+
+.filter-section h5 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: #495057;
+}
+
+.day-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.day-button {
+  padding: 8px 12px;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  background-color: white;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s ease;
+  text-align: left;
+  width: 100%;
+}
+
+.day-button:hover {
+  background-color: #f8f9fa;
+}
+
+.day-button.selected {
+  background-color: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+.time-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.time-button {
+  padding: 8px 12px;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  background-color: white;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s ease;
+  text-align: left;
+  width: 100%;
+}
+
+.time-button:hover {
+  background-color: #f8f9fa;
+}
+
+.time-button.selected {
+  background-color: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+.filter-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.add-filter-btn {
+  padding: 8px 16px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.add-filter-btn:hover {
+  background-color: #218838;
+}
+
+.filter-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.clear-button {
+  padding: 6px 12px;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  background-color: white;
+  cursor: pointer;
+  font-size: 13px;
+  color: #6c757d;
+  transition: all 0.2s ease;
+}
+
+.clear-button:hover {
+  background-color: #f8f9fa;
+}
+
+.apply-button {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  background-color: #007bff;
+  color: white;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s ease;
+}
+
+.apply-button:hover {
+  background-color: #0056b3;
+} 

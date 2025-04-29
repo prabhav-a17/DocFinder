@@ -16,7 +16,15 @@ interface Appointment {
   appointment_time: string;
   reason: string;
   created_at?: string;
+  notification_minutes_before: number;
 }
+
+const NOTIFICATION_OPTIONS = [
+  { label: '15 minutes before', value: 15 },
+  { label: '30 minutes before', value: 30 },
+  { label: '1 hour before', value: 60 },
+  { label: 'Custom', value: 'custom' }
+];
 
 const Appointments: React.FC = () => {
   const navigate = useNavigate();
@@ -28,9 +36,12 @@ const Appointments: React.FC = () => {
   const [formData, setFormData] = useState<Appointment>({
     doctor_name: '',
     appointment_time: '',
-    reason: ''
+    reason: '',
+    notification_minutes_before: 60
   });
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [notificationTime, setNotificationTime] = useState<number | 'custom'>(60);
+  const [customNotification, setCustomNotification] = useState<number>(60);
 
   useEffect(() => {
     if (!token) {
@@ -74,9 +85,11 @@ const Appointments: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const minutesBefore = notificationTime === 'custom' ? customNotification : notificationTime;
     const appointmentData = {
       ...formData,
-      appointment_time: selectedDate.toISOString()
+      appointment_time: selectedDate.toISOString(),
+      notification_minutes_before: minutesBefore
     };
 
     try {
@@ -96,19 +109,24 @@ const Appointments: React.FC = () => {
       });
 
       if (response.ok) {
+        const savedAppointment = await response.json();
         toast.success(editingId ? 'Appointment updated!' : 'Appointment created!');
         setIsFormOpen(false);
         setFormData({
           doctor_name: '',
           appointment_time: '',
-          reason: ''
+          reason: '',
+          notification_minutes_before: 60
         });
+        setNotificationTime(60);
+        setCustomNotification(60);
         setEditingId(null);
         fetchAppointments();
       } else if (response.status === 401) {
         handleAuthError({ response });
       } else {
-        toast.error('Failed to save appointment');
+        const errorData = await response.json();
+        toast.error(errorData.detail || 'Failed to save appointment');
       }
     } catch (error: any) {
       handleAuthError(error);
@@ -119,9 +137,16 @@ const Appointments: React.FC = () => {
     setFormData({
       doctor_name: appointment.doctor_name,
       appointment_time: appointment.appointment_time,
-      reason: appointment.reason
+      reason: appointment.reason,
+      notification_minutes_before: appointment.notification_minutes_before || 60
     });
     setSelectedDate(new Date(appointment.appointment_time));
+    setNotificationTime(appointment.notification_minutes_before ? 
+      NOTIFICATION_OPTIONS.find(opt => opt.value === appointment.notification_minutes_before) ? 
+      appointment.notification_minutes_before : 'custom' 
+      : 60
+    );
+    setCustomNotification(appointment.notification_minutes_before || 60);
     setEditingId(appointment.id ?? null);
     setIsFormOpen(true);
   };
@@ -162,7 +187,8 @@ const Appointments: React.FC = () => {
             setFormData({
               doctor_name: '',
               appointment_time: '',
-              reason: ''
+              reason: '',
+              notification_minutes_before: 60
             });
           }}
         >
@@ -211,6 +237,44 @@ const Appointments: React.FC = () => {
               />
             </div>
 
+            <div className="form-group">
+              <label htmlFor="notification-time">Notification Time:</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <select
+                  id="notification-time"
+                  className="form-control"
+                  value={notificationTime}
+                  onChange={e => {
+                    const val = e.target.value;
+                    if (val === 'custom') setNotificationTime('custom');
+                    else setNotificationTime(Number(val));
+                  }}
+                  style={{ flex: '0 0 200px', padding: '8px', borderRadius: 6, border: '1px solid #e5e7eb', fontSize: '1rem' }}
+                  required
+                >
+                  {NOTIFICATION_OPTIONS.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+                {notificationTime === 'custom' && (
+                  <input
+                    type="number"
+                    min={1}
+                    max={1440}
+                    value={customNotification}
+                    onChange={e => setCustomNotification(Number(e.target.value))}
+                    className="form-control"
+                    style={{ width: 90, padding: '8px', borderRadius: 6, border: '1px solid #e5e7eb', fontSize: '1rem' }}
+                    placeholder="Minutes"
+                    required
+                  />
+                )}
+                <span style={{ color: '#6B7280', fontSize: '0.95rem', marginLeft: 4 }}>
+                  before appointment
+                </span>
+              </div>
+            </div>
+
             <div className="form-buttons">
               <button type="submit" className="submit-btn">
                 {editingId ? 'Update' : 'Create'} Appointment
@@ -239,6 +303,9 @@ const Appointments: React.FC = () => {
                   {new Date(appointment.appointment_time).toLocaleString()}
                 </p>
                 <p className="appointment-reason">{appointment.reason}</p>
+                <p className="appointment-notification">
+                  Reminder: {appointment.notification_minutes_before} minutes before
+                </p>
               </div>
               <div className="appointment-actions">
                 <button 

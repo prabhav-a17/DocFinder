@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Paper, Button, TextField, Rating, Dialog, DialogTitle, DialogActions, CircularProgress } from '@mui/material';
+import { Box, Typography, Button, TextField, Rating, Dialog, DialogTitle, DialogActions, CircularProgress } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
 import { healthJournalService, HealthLog } from '../services/healthJournalService';
+import '../styles/HealthJournal.css';
 
 interface LogEntry extends Omit<HealthLog, 'created_at' | 'updated_at'> {
     isEditing?: boolean;
@@ -57,8 +58,15 @@ const HealthJournal: React.FC = () => {
     const handleConfirmDelete = async () => {
         if (logToDelete !== null) {
             try {
-                await healthJournalService.deleteLog(logToDelete);
-                setLogs(logs.filter(log => log.id !== logToDelete));
+                // Check if this is a temporary ID (created with Date.now())
+                if (logToDelete > 1000000000000) {  // Date.now() returns a 13-digit number
+                    // This is an unsaved log, just remove it from the state
+                    setLogs(logs.filter(log => log.id !== logToDelete));
+                } else {
+                    // This is a saved log, delete it from the backend
+                    await healthJournalService.deleteLog(logToDelete);
+                    setLogs(logs.filter(log => log.id !== logToDelete));
+                }
                 setError(null);
             } catch (err) {
                 setError('Failed to delete log. Please try again later.');
@@ -124,29 +132,17 @@ const HealthJournal: React.FC = () => {
     }
 
     return (
-        <Paper elevation={3} sx={{ p: 3, height: '70vh', overflow: 'auto' }}>
-            <Box sx={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center',
-                mb: 3
-            }}>
-                <Typography variant="h5">
-                    Health Journal
-                </Typography>
+        <div className="health-journal-container">
+            <div className="health-journal-header">
+                <h2>Health Journal</h2>
                 <Button
-                    variant="contained"
+                    className="create-log-btn"
                     startIcon={<AddIcon />}
                     onClick={handleCreateLog}
-                    sx={{
-                        textTransform: 'none',
-                        borderRadius: 2,
-                        px: 3
-                    }}
                 >
                     Create Log
                 </Button>
-            </Box>
+            </div>
 
             {error && (
                 <Typography color="error" sx={{ mb: 2 }}>
@@ -154,38 +150,23 @@ const HealthJournal: React.FC = () => {
                 </Typography>
             )}
 
-            <Box sx={{ 
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 2,
-                minHeight: 'calc(100% - 80px)'
-            }}>
+            <div className="logs-container">
                 {logs.length === 0 ? (
-                    <Box sx={{
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        height: '100%'
-                    }}>
-                        <Typography color="text.secondary">
-                            Select Create to start a new log entry...
+                    <div className="empty-state">
+                        <AddIcon className="empty-state-icon" />
+                        <Typography className="empty-state-text">
+                            No logs yet. Click "Create Log" to start tracking your health journey.
                         </Typography>
-                    </Box>
+                    </div>
                 ) : (
                     logs.map((log) => (
-                        <Paper
-                            key={log.id}
-                            elevation={2}
-                            sx={{
-                                p: 3,
-                                border: '1px solid',
-                                borderColor: 'divider'
-                            }}
+                        <div 
+                            key={log.id} 
+                            className={`log-card ${log.isEditing ? 'editing' : ''}`}
                         >
                             <TextField
-                                fullWidth
+                                className="clinic-name"
                                 placeholder="Clinic / Physician Name"
-                                variant="standard"
                                 value={log.clinic_name}
                                 onChange={(e) => {
                                     const updatedLogs = logs.map(l => 
@@ -194,30 +175,29 @@ const HealthJournal: React.FC = () => {
                                     setLogs(updatedLogs);
                                 }}
                                 disabled={!log.isEditing}
-                                sx={{
-                                    mb: 2,
-                                    '& .MuiInput-root': {
-                                        fontSize: '1.2rem',
-                                        fontWeight: 500
-                                    }
-                                }}
+                                variant="standard"
                             />
-                            <Rating
-                                value={log.rating}
-                                onChange={(_, newValue) => {
-                                    const updatedLogs = logs.map(l => 
-                                        l.id === log.id ? { ...l, rating: newValue || 0 } : l
-                                    );
-                                    setLogs(updatedLogs);
-                                }}
-                                disabled={!log.isEditing}
-                                sx={{ mb: 2 }}
-                            />
-                            <Typography variant="h6" sx={{ mb: 1 }}>
+                            
+                            <div className="rating-container">
+                                <span className="rating-label">Rating:</span>
+                                <Rating
+                                    value={log.rating}
+                                    onChange={(_, newValue) => {
+                                        const updatedLogs = logs.map(l => 
+                                            l.id === log.id ? { ...l, rating: newValue || 0 } : l
+                                        );
+                                        setLogs(updatedLogs);
+                                    }}
+                                    disabled={!log.isEditing}
+                                />
+                            </div>
+
+                            <Typography className="thoughts-label">
                                 Thoughts...
                             </Typography>
+                            
                             <TextField
-                                fullWidth
+                                className="thoughts-input"
                                 multiline
                                 rows={4}
                                 placeholder="Enter your thoughts here..."
@@ -230,42 +210,37 @@ const HealthJournal: React.FC = () => {
                                 }}
                                 disabled={!log.isEditing}
                             />
-                            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 2 }}>
+
+                            <div className="log-actions">
                                 {log.isEditing ? (
                                     <Button
-                                        variant="contained"
-                                        color="primary"
+                                        className="action-btn save-btn"
                                         startIcon={<SaveIcon />}
                                         onClick={() => handleSaveClick(log.id)}
-                                        sx={{ textTransform: 'none' }}
                                     >
                                         Save
                                     </Button>
                                 ) : (
                                     <Button
-                                        variant="outlined"
-                                        color="primary"
+                                        className="action-btn edit-btn"
                                         startIcon={<EditIcon />}
                                         onClick={() => handleEditClick(log.id)}
-                                        sx={{ textTransform: 'none' }}
                                     >
                                         Edit
                                     </Button>
                                 )}
                                 <Button
-                                    variant="outlined"
-                                    color="error"
+                                    className="action-btn delete-btn"
                                     startIcon={<DeleteIcon />}
                                     onClick={() => handleDeleteClick(log.id)}
-                                    sx={{ textTransform: 'none' }}
                                 >
                                     Delete
                                 </Button>
-                            </Box>
-                        </Paper>
+                            </div>
+                        </div>
                     ))
                 )}
-            </Box>
+            </div>
 
             <Dialog
                 open={deleteDialogOpen}
@@ -276,20 +251,19 @@ const HealthJournal: React.FC = () => {
                     Are you sure you want to delete this entry?
                 </DialogTitle>
                 <DialogActions>
-                    <Button onClick={handleCancelDelete} sx={{ textTransform: 'none' }}>
+                    <Button onClick={handleCancelDelete}>
                         Cancel
                     </Button>
                     <Button 
                         onClick={handleConfirmDelete} 
                         color="error" 
                         variant="contained"
-                        sx={{ textTransform: 'none' }}
                     >
                         Delete
                     </Button>
                 </DialogActions>
             </Dialog>
-        </Paper>
+        </div>
     );
 };
 

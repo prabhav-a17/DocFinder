@@ -21,8 +21,12 @@ const Login: React.FC = () => {
 
         try {
             const response = await authService.login(credentials);
-            dispatch(loginSuccess(response));
-            navigate('/dashboard');
+            dispatch(loginSuccess({
+                user: response.user,
+                token: response.token,
+                refreshToken: response.refreshToken
+            }));
+            navigate('/appointments');
         } catch (err: any) {
             const errorMessage = err.response?.data?.error || 'Login failed';
             setError(errorMessage);
@@ -31,7 +35,7 @@ const Login: React.FC = () => {
     };
 
     return (
-        <Box sx={{ maxWidth: 400, mx: 'auto', mt: 4, p: 3 }}>
+        <Box sx={{ maxWidth: 400, mx: 'auto', mt: 8, p: 3 }}>
             <Typography variant="h4" component="h1" gutterBottom>
                 Login
             </Typography>
@@ -61,7 +65,6 @@ const Login: React.FC = () => {
                 <Button
                     type="submit"
                     variant="contained"
-                    color="primary"
                     fullWidth
                     sx={{ mt: 3 }}
                 >

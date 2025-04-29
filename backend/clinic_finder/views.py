@@ -106,19 +106,36 @@ def find_doctor(request):
                         
                         # Only include results within 50 miles
                         if distance <= 50:
-                            results.append({
-                                'name': p.get('name'),
-                                'address': p.get('vicinity') or p.get('formatted_address'),
-                                'description': f"Rating: {p.get('rating', 'N/A')} ⭐",
-                                'rating': p.get('rating'),
-                                'place_id': p.get('place_id'),
-                                'distance': distance,
-                                'opening_hours': p.get('opening_hours'),
-                                'location': {
-                                    'lat': place_lat,
-                                    'lng': place_lng
-                                }
-                            })
+                            # Get detailed place information including opening hours
+                            place_id = p.get('place_id')
+                            details_url = (
+                                "https://maps.googleapis.com/maps/api/place/details/json"
+                                f"?place_id={place_id}"
+                                f"&fields=name,formatted_address,rating,opening_hours,website,formatted_phone_number"
+                                f"&key={api_key}"
+                            )
+                            details_resp = requests.get(details_url)
+                            details = details_resp.json()
+                            
+                            if details.get('status') == 'OK':
+                                place_details = details.get('result', {})
+                                results.append({
+                                    'name': place_details.get('name', p.get('name')),
+                                    'address': place_details.get('formatted_address', p.get('vicinity')),
+                                    'description': f"Rating: {place_details.get('rating', 'N/A')} ⭐",
+                                    'rating': place_details.get('rating'),
+                                    'place_id': place_id,
+                                    'distance': distance,
+                                    'opening_hours': place_details.get('opening_hours'),
+                                    'website': place_details.get('website'),
+                                    'phone_number': place_details.get('formatted_phone_number'),
+                                    'location': {
+                                        'lat': place_lat,
+                                        'lng': place_lng
+                                    }
+                                })
+                            else:
+                                logger.warning(f"Failed to get details for place {p.get('name')}: {details.get('status')}")
                         else:
                             logger.debug(f"Skipping {p.get('name')} - too far ({distance} miles)")
                     else:
