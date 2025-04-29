@@ -12,19 +12,38 @@ interface Message {
   created_at: string;
 }
 
+interface Chat {
+  id: string;
+  title: string;
+  message: string;
+  response: string;
+  is_pinned: boolean;
+  created_at: string;
+}
+
 const Chatbot: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const conversationId = searchParams.get('conversation');
   const { token } = useSelector((state: RootState) => state.auth);
-    const [messages, setMessages] = useState<Message[]>([]);
-    const [input, setInput] = useState('');
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastSpecialist, setLastSpecialist] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Load pinned IDs from localStorage on mount
+  const [pinnedIds, setPinnedIds] = useState<string[]>(() => {
+    const saved = localStorage.getItem('pinnedChats');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // Server chat list
+  const [chats, setChats] = useState<Chat[]>([]);
+
   useEffect(() => {
+    fetchChatHistory();
     if (conversationId) {
       fetchConversation(conversationId);
     } else {
@@ -32,9 +51,55 @@ const Chatbot: React.FC = () => {
     }
   }, [conversationId]);
 
-    useEffect(() => {
-        scrollToBottom();
-    }, [messages]);
+  const fetchChatHistory = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/chat/history/`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data: Chat[] = await response.json();
+        // Merge in the saved pins
+        setChats(data.map(chat => ({
+          ...chat,
+          is_pinned: pinnedIds.includes(chat.id)
+        })));
+      } else if (response.status === 401) {
+        navigate('/login');
+      } else {
+        setError('Failed to fetch chat history');
+      }
+    } catch (err) {
+      setError('An error occurred while fetching chat history');
+    }
+  };
+
+  const handlePinToggle = (chatId: string) => {
+    // Update the pinned-IDs array
+    setPinnedIds(current => {
+      const next = current.includes(chatId)
+        ? current.filter(id => id !== chatId)
+        : [...current, chatId];
+      
+      // Persist to localStorage immediately
+      localStorage.setItem('pinnedChats', JSON.stringify(next));
+
+      // Also flip it in our chats list so UI updates instantly
+      setChats(chats =>
+        chats.map(c =>
+          c.id === chatId ? { ...c, is_pinned: next.includes(chatId) } : c
+        )
+      );
+
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const extractSpecialist = (message: string): string | null => {
     // Look for the pattern "find a [specialist] near you"
@@ -98,7 +163,7 @@ const Chatbot: React.FC = () => {
     if (!input.trim()) return;
 
     const userMessage = input.trim();
-        setInput('');
+    setInput('');
     setLoading(true);
     setError(null);
 
@@ -110,22 +175,22 @@ const Chatbot: React.FC = () => {
     };
     setMessages(prev => [...prev, userMessageObj]);
 
-        try {
+    try {
       const response = await fetch(`${API_BASE_URL}/chat/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
-                },
+        },
         body: JSON.stringify({
           message: userMessage,
           conversation_id: conversationId
         })
-            });
+      });
 
       if (response.ok) {
-            const data = await response.json();
-            
+        const data = await response.json();
+        
         // If this is a new conversation, update the URL
         if (!conversationId) {
           navigate(`/chatbot?conversation=${data.conversation_id}`);
@@ -144,15 +209,15 @@ const Chatbot: React.FC = () => {
         setError('Failed to send message');
         // Remove the user's message if the request failed
         setMessages(prev => prev.filter(msg => msg !== userMessageObj));
-            }
+      }
     } catch (err) {
       setError('An error occurred while sending message');
       // Remove the user's message if there was an error
       setMessages(prev => prev.filter(msg => msg !== userMessageObj));
-        } finally {
+    } finally {
       setLoading(false);
-        }
-    };
+    }
+  };
 
   const handleFindSpecialist = () => {
     if (lastSpecialist) {
@@ -166,12 +231,15 @@ const Chatbot: React.FC = () => {
     navigate('/chatbot');
     setMessages([]);
     setLastSpecialist(null);
-    };
+  };
 
-    return (
+  return (
     <div className="chatbot-container">
       <div className="chat-history-sidebar">
-        <ChatHistory />
+        <ChatHistory 
+          chats={chats}
+          onPinToggle={handlePinToggle}
+        />
       </div>
       <div className="chat-window">
         <div className="chat-header">
@@ -218,24 +286,24 @@ const Chatbot: React.FC = () => {
               </button>
             </div>
           )}
-                    <div ref={messagesEndRef} />
+          <div ref={messagesEndRef} />
         </div>
         {error && <div className="error-message">{error}</div>}
         <form onSubmit={handleSubmit} className="input-form">
           <input
             type="text"
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    placeholder="Type your message..."
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Type your message..."
             disabled={loading}
-                />
+          />
           <button type="submit" disabled={loading}>
-                    Send
+            Send
           </button>
         </form>
       </div>
     </div>
-    );
+  );
 };
 
 export default Chatbot; 

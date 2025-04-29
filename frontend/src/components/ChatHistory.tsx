@@ -1,146 +1,161 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { API_BASE_URL } from '../config';
-import { useSelector } from 'react-redux';
-import { RootState } from '../store';
-import { format } from 'date-fns';
 import '../styles/ChatHistory.css';
 
-interface Message {
-  content: string;
-  role: string;
-  created_at: string;
-}
-
-interface Conversation {
+interface Chat {
   id: string;
   title: string;
-  created_at: string;
-  updated_at: string;
-  messages: Message[];
+  message: string;
+  response: string;
   is_pinned: boolean;
+  created_at: string;
 }
 
-const ChatHistory: React.FC = () => {
+interface ChatHistoryProps {
+  chats: Chat[];
+  onPinToggle: (chatId: string) => void;
+}
+
+const ChatHistory: React.FC<ChatHistoryProps> = ({ chats, onPinToggle }) => {
   const navigate = useNavigate();
-  const { token } = useSelector((state: RootState) => state.auth);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchChatHistory();
-  }, []);
+  const formatTimestamp = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
 
-  const fetchChatHistory = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/chat/history/`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        // Sort conversations by pinned status and updated_at
-        const sortedConversations = data.sort((a: Conversation, b: Conversation) => {
-          if (a.is_pinned !== b.is_pinned) {
-            return a.is_pinned ? -1 : 1;
-          }
-          return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
-        });
-        setConversations(sortedConversations);
-      } else if (response.status === 401) {
-        navigate('/login');
-      } else {
-        setError('Failed to fetch chat history');
-      }
-    } catch (err) {
-      setError('An error occurred while fetching chat history');
-    } finally {
-      setLoading(false);
+    if (date.toDateString() === today.toDateString()) {
+      return `Today at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      return `Yesterday at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    } else {
+      return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
     }
   };
 
-  const handlePinToggle = async (conversationId: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent navigation when clicking pin button
-    try {
-      const response = await fetch(`${API_BASE_URL}/chat/pin/${conversationId}/`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        // Update the conversation's pinned status in the state
-        setConversations(prev => {
-          const updated = prev.map(conv => 
-            conv.id === conversationId 
-              ? { ...conv, is_pinned: !conv.is_pinned }
-              : conv
-          );
-          // Re-sort after updating pin status
-          return updated.sort((a, b) => {
-            if (a.is_pinned !== b.is_pinned) {
-              return a.is_pinned ? -1 : 1;
-            }
-            return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
-          });
-        });
-      }
-    } catch (err) {
-      setError('Failed to toggle pin status');
+  // Sort chats with pinned ones first, then by date
+  const sortedChats = [...chats].sort((a, b) => {
+    if (a.is_pinned !== b.is_pinned) {
+      return a.is_pinned ? -1 : 1;
     }
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+
+  const getChatTitle = (chat: Chat) => {
+    // If there's a title, use it, otherwise use the first part of the message
+    if (chat?.title?.trim()) return chat.title.trim();
+    if (chat?.message?.trim()) {
+      const message = chat.message.trim();
+      // Return first 30 characters of message or up to the first newline
+      const firstLine = message.split('\n')[0];
+      return firstLine.length > 30 ? firstLine.substring(0, 30) + '...' : firstLine;
+    }
+    return 'New chat';
   };
-
-  const formatDate = (dateString: string) => {
-    return format(new Date(dateString), 'MMM d, yyyy h:mm a');
-  };
-
-  if (loading) {
-    return <div className="chat-history loading">Loading conversations...</div>;
-  }
-
-  if (error) {
-    return <div className="chat-history error">{error}</div>;
-  }
 
   return (
     <div className="chat-history">
-      <h2>Chat History</h2>
-      {conversations.length === 0 ? (
-        <p className="no-conversations">No conversations yet</p>
-      ) : (
-        <div className="conversations-list">
-          {conversations.map(conversation => (
-            <div 
-              key={conversation.id} 
-              className={`conversation-item ${conversation.is_pinned ? 'pinned' : ''}`}
-              onClick={() => navigate(`/chatbot?conversation=${conversation.id}`)}
-            >
-              <div className="conversation-header">
-                <h3>{conversation.title}</h3>
-                <button 
-                  className={`pin-button ${conversation.is_pinned ? 'pinned' : ''}`}
-                  onClick={(e) => handlePinToggle(conversation.id, e)}
-                  title={conversation.is_pinned ? 'Unpin conversation' : 'Pin conversation'}
-                >
-                  📌
-                </button>
+      <div className="chat-sections">
+        <div className="chat-section">
+          <h3 className="section-title">Today</h3>
+          {sortedChats
+            .filter(chat => {
+              const date = new Date(chat.created_at);
+              const today = new Date();
+              return date.toDateString() === today.toDateString();
+            })
+            .map(chat => (
+              <div 
+                key={chat.id} 
+                className={`chat-summary ${chat.is_pinned ? 'pinned' : ''}`}
+                onClick={() => navigate(`/chatbot?conversation=${chat.id}`)}
+              >
+                <div className="chat-info">
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onPinToggle(chat.id);
+                    }}
+                    className={`pin-button ${chat.is_pinned ? 'pinned' : ''}`}
+                    aria-label={chat.is_pinned ? 'Unpin chat' : 'Pin chat'}
+                  >
+                    {chat.is_pinned ? '📌' : '📍'}
+                  </button>
+                  <span className="chat-title">{getChatTitle(chat)}</span>
+                </div>
               </div>
-              <p className="last-message">
-                {conversation.messages.length > 0 
-                  ? conversation.messages[conversation.messages.length - 1].content.substring(0, 50) + '...'
-                  : 'No messages yet'}
-              </p>
-              <p className="timestamp">
-                {formatDate(conversation.updated_at)}
-              </p>
-            </div>
-          ))}
+            ))}
         </div>
-      )}
+
+        <div className="chat-section">
+          <h3 className="section-title">Yesterday</h3>
+          {sortedChats
+            .filter(chat => {
+              const date = new Date(chat.created_at);
+              const today = new Date();
+              const yesterday = new Date(today);
+              yesterday.setDate(yesterday.getDate() - 1);
+              return date.toDateString() === yesterday.toDateString();
+            })
+            .map(chat => (
+              <div 
+                key={chat.id} 
+                className={`chat-summary ${chat.is_pinned ? 'pinned' : ''}`}
+                onClick={() => navigate(`/chatbot?conversation=${chat.id}`)}
+              >
+                <div className="chat-info">
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onPinToggle(chat.id);
+                    }}
+                    className={`pin-button ${chat.is_pinned ? 'pinned' : ''}`}
+                    aria-label={chat.is_pinned ? 'Unpin chat' : 'Pin chat'}
+                  >
+                    {chat.is_pinned ? '📌' : '📍'}
+                  </button>
+                  <span className="chat-title">{getChatTitle(chat)}</span>
+                </div>
+              </div>
+            ))}
+        </div>
+
+        <div className="chat-section">
+          <h3 className="section-title">Previous 7 Days</h3>
+          {sortedChats
+            .filter(chat => {
+              const date = new Date(chat.created_at);
+              const today = new Date();
+              const yesterday = new Date(today);
+              yesterday.setDate(yesterday.getDate() - 1);
+              const sevenDaysAgo = new Date(today);
+              sevenDaysAgo.setDate(today.getDate() - 7);
+              return date > sevenDaysAgo && date.toDateString() !== today.toDateString() && date.toDateString() !== yesterday.toDateString();
+            })
+            .map(chat => (
+              <div 
+                key={chat.id} 
+                className={`chat-summary ${chat.is_pinned ? 'pinned' : ''}`}
+                onClick={() => navigate(`/chatbot?conversation=${chat.id}`)}
+              >
+                <div className="chat-info">
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onPinToggle(chat.id);
+                    }}
+                    className={`pin-button ${chat.is_pinned ? 'pinned' : ''}`}
+                    aria-label={chat.is_pinned ? 'Unpin chat' : 'Pin chat'}
+                  >
+                    {chat.is_pinned ? '📌' : '📍'}
+                  </button>
+                  <span className="chat-title">{getChatTitle(chat)}</span>
+                </div>
+              </div>
+            ))}
+        </div>
+      </div>
     </div>
   );
 };
