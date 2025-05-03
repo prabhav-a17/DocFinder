@@ -175,10 +175,13 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Email Configuration
-EMAIL_BACKEND = 'sendgrid_backend.SendgridBackend'
-SENDGRID_API_KEY = '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'
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.sendgrid.net'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'apikey'
+EMAIL_HOST_PASSWORD = os.getenv('SENDGRID_API_KEY')
 DEFAULT_FROM_EMAIL = 'doc.finder.email@gmail.com'
-SENDGRID_SANDBOX_MODE_IN_DEBUG = False
 
 # Frontend URL for password reset links
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
